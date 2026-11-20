@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 import type { ComponentProps } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Card, SectionLabel } from '@/components/controls';
+import { Card, Choice, SectionLabel } from '@/components/controls';
 import { AddressFields, Field, Input, TextField, formStyles } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { ScreenHeader } from '@/components/screen-header';
@@ -11,6 +11,7 @@ import { PRIVACY_URL, SUPPORT_URL } from '@/constants/links';
 import { MaxContentWidth, Spacing, useTheme } from '@/constants/theme';
 import { pickTextFile, shareTextFile } from '@/lib/files';
 import { parseAppData, recordNumber, todayIso } from '@/lib/records';
+import { REMINDER_DAYS, remindersAllowed, remindersSupported } from '@/lib/reminders';
 import { useStore } from '@/lib/store';
 import type { Engineer } from '@/lib/types';
 import { confirm, notify } from '@/lib/ui';
@@ -109,9 +110,46 @@ export default function SettingsScreen() {
         <SectionLabel>Your signature</SectionLabel>
         <Card style={formStyles.group}>
           <Text style={{ color: c.textSecondary, fontSize: 14, lineHeight: 20 }}>
-            Saved here so you can add it to a record with one tap.
+            Added to every new record automatically, so you only sign once.
           </Text>
           <SignatureField value={e.signature} onChange={set('signature')} />
+        </Card>
+
+        <SectionLabel>Due-date reminders</SectionLabel>
+        <Card style={formStyles.group}>
+          {remindersSupported ? (
+            <>
+              <Text style={{ color: c.textSecondary, fontSize: 14, lineHeight: 20 }}>
+                Your phone alerts you {REMINDER_DAYS.join(' and ')} days before each property&apos;s next check is due. Tap the alert to
+                email the landlord a ready-written reminder from your own email, copied to you.
+              </Text>
+              <Choice
+                options={[
+                  { value: 'on', label: 'On' },
+                  { value: 'off', label: 'Off' },
+                ]}
+                value={e.remindersOn ? 'on' : 'off'}
+                onChange={async (v) => {
+                  if (v === 'on' && (await remindersAllowed(true)) === 'denied') {
+                    notify(
+                      'Alerts are switched off',
+                      'Allow notifications for Gas Safety Records in your iPhone Settings, under Notifications.',
+                    );
+                  }
+                  set('remindersOn')(v === 'on');
+                }}
+              />
+            </>
+          ) : (
+            <Text style={{ color: c.textSecondary, fontSize: 14, lineHeight: 20 }}>
+              Reminder alerts work in the iPhone app. On the website, check the Due tab, where you can email each landlord.
+            </Text>
+          )}
+          {!e.email.trim() && (
+            <Text style={{ color: c.low, fontSize: 14, lineHeight: 20 }}>
+              Add your email above to get a copy of each reminder you send.
+            </Text>
+          )}
         </Card>
 
         <SectionLabel>Record numbers</SectionLabel>

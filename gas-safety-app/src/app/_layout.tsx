@@ -5,6 +5,8 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
 import { DialogHost } from '@/components/dialog-host';
+import { NotificationTaps } from '@/components/notification-taps';
+import { ReminderSync } from '@/components/reminder-sync';
 import { useTheme } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { StoreProvider, useStore } from '@/lib/store';
@@ -23,6 +25,8 @@ export default function RootLayout() {
     <ThemeProvider value={navTheme}>
       <StoreProvider>
         <HideSplashWhenLoaded />
+        <ReminderSync />
+        <NotificationTaps />
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
         <Stack
           screenOptions={{

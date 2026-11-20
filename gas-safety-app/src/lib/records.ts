@@ -19,6 +19,7 @@ export function emptyEngineer(): Engineer {
     recordPrefix: 'LGSR-',
     nextRecordNumber: 1,
     lastBackupAt: null,
+    remindersOn: true,
   };
 }
 
@@ -170,6 +171,7 @@ export function newRecord(number: string): GasRecord {
     receivedByRole: '',
     receivedBySignature: null,
     issuedAt: null,
+    remindedAt: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -353,6 +355,7 @@ export function parseAppData(raw: unknown): AppData {
     signature: signature(e.signature),
     nextRecordNumber: Math.max(1, Number(e.nextRecordNumber) || 1),
     lastBackupAt: typeof e.lastBackupAt === 'number' ? e.lastBackupAt : null,
+    remindersOn: e.remindersOn !== false,
     recordPrefix: typeof e.recordPrefix === 'string' ? e.recordPrefix : 'LGSR-',
   };
   const records = src.records

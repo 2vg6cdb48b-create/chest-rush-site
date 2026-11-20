@@ -5,9 +5,10 @@ import { Badge, Button, EmptyState } from '@/components/controls';
 import { ScreenHeader } from '@/components/screen-header';
 import { MaxContentWidth, Radius, Spacing, useTheme } from '@/constants/theme';
 import { dueLabel, useDueSummary, type DueItem } from '@/lib/due';
-import { formatAddress, formatLongDate } from '@/lib/records';
+import { formatLongDate } from '@/lib/records';
 import { useStore } from '@/lib/store';
-import { shareText } from '@/lib/ui';
+import { sendReminderEmail } from '@/lib/reminder-email';
+import { notify } from '@/lib/ui';
 
 const TITLES: Record<DueItem['bucket'], string> = {
   overdue: 'Overdue',
@@ -18,7 +19,7 @@ const TITLES: Record<DueItem['bucket'], string> = {
 
 export default function DueScreen() {
   const c = useTheme();
-  const { loaded, renewRecord, engineer } = useStore();
+  const { loaded, renewRecord, engineer, markReminded } = useStore();
   const { list, needsAttention } = useDueSummary();
 
   const sections = (['overdue', 'soon', 'upcoming', 'later'] as const)
@@ -34,13 +35,12 @@ export default function DueScreen() {
     if (id) router.push({ pathname: '/record/[id]', params: { id } });
   };
 
-  const remind = (item: DueItem) => {
-    const r = item.record;
-    const greeting = r.landlordName.trim() ? `Hi ${r.landlordName.trim().split(' ')[0]},` : 'Hello,';
-    const from = [engineer.name, engineer.companyName].filter(Boolean).join(', ');
-    shareText(
-      `${greeting}\n\nThe annual gas safety check for ${formatAddress(r.property)} is due by ${formatLongDate(r.nextDueDate)}. Let me know a good day to book it in.\n\nThanks${from ? `,\n${from}` : ''}`,
-    );
+  const remind = async (item: DueItem) => {
+    try {
+      if (await sendReminderEmail(item.record, engineer)) markReminded(item.record.id);
+    } catch (e) {
+      notify('Couldn’t open email', e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (
@@ -104,6 +104,13 @@ function DueRow({ item, onRenew, onRemind }: { item: DueItem; onRenew: () => voi
           <Badge label={dueLabel(item.daysLeft)} tone={tone} />
           <Text style={[styles.sub, { color: c.textSecondary }]}>by {formatLongDate(r.nextDueDate)}</Text>
         </View>
+        {(!!r.remindedAt || !r.landlordEmail.trim()) && (
+          <Text style={[styles.sub, { color: c.textSecondary }]}>
+            {r.remindedAt
+              ? `Landlord emailed ${new Date(r.remindedAt).toLocaleDateString('en-GB')}`
+              : 'No landlord email on this record: add one so reminders can be sent.'}
+          </Text>
+        )}
       </View>
       <View style={styles.actions}>
         <Button
@@ -112,7 +119,13 @@ function DueRow({ item, onRenew, onRemind }: { item: DueItem; onRenew: () => voi
           icon={{ ios: 'arrow.clockwise', md: 'autorenew' }}
           onPress={onRenew}
         />
-        <Button label="Remind landlord" compact variant="secondary" onPress={onRemind} />
+        <Button
+          label={r.remindedAt ? 'Email again' : 'Email landlord'}
+          compact
+          variant="secondary"
+          icon={{ ios: 'envelope', md: 'mail' }}
+          onPress={onRemind}
+        />
       </View>
     </View>
   );

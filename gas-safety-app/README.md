@@ -6,7 +6,8 @@ A phone app for Gas Safe registered engineers to fill in **landlord gas safety r
 - **Appliances**: location, type, make and model; landlord's appliance and inspected; flue type (RS/OF/FL); operating pressure and/or heat input; CO, CO₂ and the CO/CO₂ ratio (worked out for you); safety devices, ventilation, flue condition, flue performance, serviced, CO alarm, safe to use; and any defects with their AR/ID classification, warning notice, warning label and remedial action.
 - **Issuing**: the app won't issue a record until everything Regulation 36(3) requires is filled in, and it lists anything missing. The PDF is an A4 landscape page laid out like a paper CP12 pad. Drafts are marked DRAFT.
 - **Due dates**: 12 months from the check. If you enter last year's due date and the check is up to two months early, the anniversary date is kept (Regulation 36A). The **Due** tab lists overdue and upcoming properties, with **Start next record**, which copies last year's details and appliances, and **Remind landlord**, which prepares a message.
-- **Settings**: your name, Gas Safe number, licence number and business details; your saved signature; record numbering; and backup and restore.
+- **Settings**: your name, Gas Safe number, licence number and business details, and your signature. These are added to every new record automatically, and frozen onto each record when it's issued, so changing them later doesn't alter old records. Also record numbering, and backup and restore.
+- **Reminders** (iPhone app): your phone alerts you 30 and 7 days before each property's next check is due. Tapping the alert opens a ready-written email to the landlord in your own email app, copied to you. Nothing is sent without you pressing Send, and no server is needed.
 
 ### What the record is based on
 

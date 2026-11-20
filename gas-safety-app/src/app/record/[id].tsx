@@ -29,6 +29,7 @@ import {
   nextDueDate,
   recordHasFault,
 } from '@/lib/records';
+import { remindersAllowed, remindersSupported } from '@/lib/reminders';
 import { shareRecordPdf } from '@/lib/share-record';
 import { useStore } from '@/lib/store';
 import type { Classification, GasRecord } from '@/lib/types';
@@ -112,6 +113,8 @@ export default function RecordScreen() {
     store.issueRecord(r.id);
     success();
     await share(true);
+    // First issued record: ask once for permission to send due-date alerts.
+    if (remindersSupported && engineer.remindersOn) remindersAllowed(true).catch(() => {});
   };
 
   const reopen = async () => {
@@ -235,6 +238,7 @@ export default function RecordScreen() {
               onChange={(landlordEmail) => patch({ landlordEmail })}
               keyboardType="email-address"
               autoCapitalize="none"
+              hint="Used for the reminder when next year's check is due."
             />
           </Card>
         </Locked>

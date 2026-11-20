@@ -87,6 +87,8 @@ export type GasRecord = {
   receivedByRole: 'Tenant' | 'Landlord' | 'Agent' | 'Homeowner' | '';
   receivedBySignature: Signature | null;
   issuedAt: number | null;
+  /** When you last emailed the landlord that the next check is due. */
+  remindedAt: number | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -106,6 +108,8 @@ export type Engineer = {
   nextRecordNumber: number;
   /** When a backup file was last saved (ms), or null if never. */
   lastBackupAt: number | null;
+  /** Phone alerts 30 and 7 days before each property's next check is due. */
+  remindersOn: boolean;
 };
 
 /** The parts of your details printed on a record. */

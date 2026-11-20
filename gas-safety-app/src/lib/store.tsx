@@ -32,6 +32,8 @@ type StoreValue = {
   deleteRecord: (id: string) => void;
   saveEngineer: (engineer: Engineer) => void;
   markBackedUp: () => void;
+  /** Notes that the landlord has been emailed about the next check. */
+  markReminded: (id: string) => void;
   addExample: () => string;
   replaceAll: (data: AppData) => void;
   clearAll: () => void;
@@ -142,6 +144,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteRecord: (id) =>
         setData((d) => ({ ...d, records: d.records.filter((r) => r.id !== id) })),
       saveEngineer: (engineer) => setData((d) => ({ ...d, engineer })),
+      markReminded: (id) =>
+        setData((d) => ({
+          ...d,
+          records: d.records.map((r) => (r.id === id ? { ...r, remindedAt: Date.now() } : r)),
+        })),
       markBackedUp: () =>
         setData((d) => ({ ...d, engineer: { ...d.engineer, lastBackupAt: Date.now() } })),
       addExample: () => insert(exampleRecord),
