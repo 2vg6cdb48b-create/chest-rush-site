@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Gas Safety Records",
+    "name": "NG Gas Records",
     "slug": "gas-safety-records",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,7 +18,7 @@
     "android": {
       "package": "com.nathangentnewbould.gasrecords",
       "adaptiveIcon": {
-        "backgroundColor": "#0B6E69",
+        "backgroundColor": "#E4501A",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -39,7 +39,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0B6E69",
+          "backgroundColor": "#E4501A",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 120
         }

@@ -52,6 +52,9 @@ function field(label: string, value: string) {
   return `<div class="f"><span class="l">${esc(label)}</span><span class="v">${value || '&nbsp;'}</span></div>`;
 }
 
+/** The NG Gas Records mark, drawn inline so the PDF needs no image files. */
+const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" class="logo" aria-label="NG Gas Records"><defs><linearGradient id="ngLogoBg" x1="0" y1="0" x2="0.6" y2="1"><stop offset="0" stop-color="#FF8A2B"/><stop offset="1" stop-color="#E4501A"/></linearGradient></defs><rect width="1024" height="1024" fill="url(#ngLogoBg)"/><path d="M220 452 L512 232 L804 452" fill="none" stroke="#FFFFFF" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/><path d="M512.0 322.0 C523.4 343.4 554.2 364.7 554.2 407.4 C554.2 438.3 535.3 462.0 512.0 462.0 C488.7 462.0 469.8 438.3 469.8 408.8 C469.8 387.5 480.7 372.8 492.5 361.4 C493.7 378.0 499.7 387.5 508.7 391.8 C503.9 370.4 504.4 345.7 512.0 322.0 Z" fill="#FFFFFF"/><text x="512" y="780" text-anchor="middle" font-family="Inter, DejaVu Sans, Arial" font-weight="800" font-size="330" letter-spacing="-14" fill="#FFFFFF">NG</text></svg>`;
+
 const FLUE: Record<string, string> = { RS: 'RS', OF: 'OF', FL: 'FL', na: 'N/A' };
 
 /** The record as a printable A4 landscape page, laid out like a paper landlord's gas safety record. */
@@ -108,24 +111,25 @@ export function recordHtml(r: GasRecord, currentEngineer: Engineer): string {
   body { font: 8.4pt/1.25 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #15202B; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .page { width: 281mm; margin: 0 auto; position: relative; }
   .top { display: flex; align-items: stretch; gap: 3mm; margin-bottom: 2mm; }
-  .title { flex: 1; background: #0B6E69; color: #fff; padding: 2mm 4mm; border-radius: 1.5mm; }
+  .title { flex: 1; background: #13294B; color: #fff; padding: 2mm 4mm; border-radius: 1.5mm; border-bottom: 1.2mm solid #E4501A; display: flex; align-items: center; gap: 3.5mm; }
+  .logo { width: 13mm; height: 13mm; flex: none; border-radius: 3mm; display: block; }
   .title h1 { margin: 0; font-size: 16pt; letter-spacing: .04em; font-weight: 800; }
   .title p { margin: .8mm 0 0; font-size: 8pt; opacity: .92; }
-  .meta { width: 74mm; border: .3mm solid #0B6E69; border-radius: 1.5mm; padding: 1.5mm 3mm; display: grid; grid-template-columns: auto 1fr; gap: .6mm 3mm; align-content: center; }
+  .meta { width: 74mm; border: .3mm solid #E4501A; border-radius: 1.5mm; padding: 1.5mm 3mm; display: grid; grid-template-columns: auto 1fr; gap: .6mm 3mm; align-content: center; }
   .meta b { font-size: 9.5pt; }
   .meta span { color: #47525E; }
   .boxes { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 2.5mm; margin-bottom: 2mm; }
-  .box { border: .3mm solid #9FB4B2; border-radius: 1.5mm; overflow: hidden; }
-  .box h2, .sec h2 { margin: 0; background: #DDF1EF; color: #0B4F4B; font-size: 7.6pt; text-transform: uppercase; letter-spacing: .06em; padding: 1mm 2.5mm; font-weight: 800; }
+  .box { border: .3mm solid #B9C3D0; border-radius: 1.5mm; overflow: hidden; }
+  .box h2, .sec h2 { margin: 0; background: #EEF2F7; color: #13294B; border-left: 1.2mm solid #E4501A; font-size: 7.6pt; text-transform: uppercase; letter-spacing: .06em; padding: 1mm 2.5mm; font-weight: 800; }
   .box .in { padding: 1mm 2.5mm; }
-  .f { display: flex; gap: 2mm; padding: .2mm 0; border-bottom: .2mm dotted #C5D2D1; }
+  .f { display: flex; gap: 2mm; padding: .2mm 0; border-bottom: .2mm dotted #CDD5DF; }
   .f:last-child { border-bottom: 0; }
   .l { color: #47525E; width: 26mm; flex: none; }
   .v { font-weight: 600; }
-  .sec { border: .3mm solid #9FB4B2; border-radius: 1.5mm; overflow: hidden; margin-bottom: 2mm; break-inside: avoid; page-break-inside: avoid; }
+  .sec { border: .3mm solid #B9C3D0; border-radius: 1.5mm; overflow: hidden; margin-bottom: 2mm; break-inside: avoid; page-break-inside: avoid; }
   table { width: 100%; border-collapse: collapse; }
-  th { background: #F1F6F6; color: #2B3742; font-size: 6.8pt; font-weight: 700; padding: .8mm 1mm; border: .2mm solid #C5D2D1; vertical-align: bottom; line-height: 1.15; }
-  td { border: .2mm solid #C5D2D1; padding: .6mm 1.2mm; height: 5mm; vertical-align: middle; }
+  th { background: #F5F7FA; color: #2B3742; font-size: 6.8pt; font-weight: 700; padding: .8mm 1mm; border: .2mm solid #CDD5DF; vertical-align: bottom; line-height: 1.15; }
+  td { border: .2mm solid #CDD5DF; padding: .6mm 1.2mm; height: 5mm; vertical-align: middle; }
   td.c { text-align: center; }
   td.n { width: 7mm; color: #47525E; font-weight: 700; }
   td.bad { color: #B42318; font-weight: 800; }
@@ -136,7 +140,7 @@ export function recordHtml(r: GasRecord, currentEngineer: Engineer): string {
   .inst b { font-size: 9pt; }
   .decl { font-size: 7.2pt; color: #2B3742; padding: 1mm 2.5mm 0; }
   .signs { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; padding: 1mm 2.5mm 1.5mm; }
-  .sigbox { border: .2mm solid #C5D2D1; border-radius: 1mm; padding: 1mm 2mm; }
+  .sigbox { border: .2mm solid #CDD5DF; border-radius: 1mm; padding: 1mm 2mm; }
   .sigline { height: 12mm; border-bottom: .2mm solid #8A99A8; display: flex; align-items: flex-end; overflow: hidden; }
   .sig { display: block; height: 11.5mm; width: 60mm; }
   .small { font-size: 6.6pt; color: #47525E; margin-top: 1mm; display: flex; justify-content: space-between; gap: 4mm; }
@@ -148,8 +152,11 @@ export function recordHtml(r: GasRecord, currentEngineer: Engineer): string {
 ${draft ? '<div class="draft">DRAFT</div>' : ''}
 <div class="top">
   <div class="title">
-    <h1>LANDLORD GAS SAFETY RECORD</h1>
-    <p>Gas Safety (Installation and Use) Regulations 1998 — Regulation 36(3)</p>
+    ${LOGO}
+    <div>
+      <h1>LANDLORD GAS SAFETY RECORD</h1>
+      <p>Gas Safety (Installation and Use) Regulations 1998 — Regulation 36(3)</p>
+    </div>
   </div>
   <div class="meta">
     <span>Record no.</span><b>${esc(r.number)}</b>
