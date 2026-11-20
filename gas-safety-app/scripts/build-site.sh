@@ -10,6 +10,6 @@ EXPO_BASE_URL=$BASE node scripts/build-web-preview.js "$OUT/index.html"
 cp assets/images/icon.png "$OUT/apple-touch-icon.png"
 # GitHub Pages serves /due from due.html; send those back to the app.
 for page in due settings; do
-  printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./"><title>Gas Safety Records</title>\n' > "$OUT/$page.html"
+  printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./"><title>NG Gas Records</title>\n' > "$OUT/$page.html"
 done
 echo "Built $OUT"

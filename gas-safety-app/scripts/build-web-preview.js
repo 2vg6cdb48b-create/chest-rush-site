@@ -47,14 +47,14 @@ const startOnHome = base
 `;
 
 const styles = `<style>
-  :root { --bg: #F1F4F4; --fg: #14181F; box-sizing: border-box; height: 100%; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0B0D11; --fg: #F2F4F7; color-scheme: dark } }
-  :root[data-theme="dark"] { --bg: #0B0D11; --fg: #F2F4F7; color-scheme: dark }
+  :root { --bg: #F3F4F7; --fg: #14181F; box-sizing: border-box; height: 100%; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0A0F1A; --fg: #F2F4F7; color-scheme: dark } }
+  :root[data-theme="dark"] { --bg: #0A0F1A; --fg: #F2F4F7; color-scheme: dark }
   body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg); }
   #root { display: flex; height: 100%; flex: 1; }
 </style>`;
 
-const content = `<title>Gas Safety Records</title>
+const content = `<title>NG Gas Records</title>
 <meta name="description" content="Landlord gas safety records (CP12) on your phone">
 ${styles}
 <div id="root"></div>
@@ -71,8 +71,8 @@ const page = base
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Gas Records">
-<meta name="theme-color" content="#0B6E69">
+<meta name="apple-mobile-web-app-title" content="NG Gas Records">
+<meta name="theme-color" content="#E4501A">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }</style>
 </head>

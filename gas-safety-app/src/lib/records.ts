@@ -345,7 +345,7 @@ function signature(v: unknown): Signature | null {
 export function parseAppData(raw: unknown): AppData {
   const src = raw as Partial<AppData>;
   if (!src || typeof src !== 'object' || !Array.isArray(src.records)) {
-    throw new Error('This file is not a Gas Safety Records backup.');
+    throw new Error('This file is not an NG Gas Records backup.');
   }
   const e = (src.engineer ?? {}) as Partial<Engineer>;
   const engineer: Engineer = {

@@ -1,4 +1,6 @@
-# Gas Safety Records
+# NG Gas Records
+
+*by NG Plumbing & Heating*
 
 A phone app for Gas Safe registered engineers to fill in **landlord gas safety records (CP12)**, sign them on screen and send them as a PDF. There's no subscription, and everything is saved on the phone.
 

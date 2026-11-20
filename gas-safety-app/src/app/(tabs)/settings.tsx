@@ -27,7 +27,7 @@ export default function SettingsScreen() {
   const backup = async () => {
     try {
       await shareTextFile(
-        `gas-safety-records-backup-${todayIso()}.json`,
+        `ng-gas-records-backup-${todayIso()}.json`,
         JSON.stringify({ ...store.data, exportedAt: new Date().toISOString() }),
         'application/json',
       );
@@ -54,7 +54,7 @@ export default function SettingsScreen() {
     } catch (err) {
       notify(
         'Could not restore',
-        err instanceof SyntaxError ? 'That file is not a Gas Safety Records backup.' : err instanceof Error ? err.message : String(err),
+        err instanceof SyntaxError ? 'That file is not an NG Gas Records backup.' : err instanceof Error ? err.message : String(err),
       );
     }
   };
@@ -133,7 +133,7 @@ export default function SettingsScreen() {
                   if (v === 'on' && (await remindersAllowed(true)) === 'denied') {
                     notify(
                       'Alerts are switched off',
-                      'Allow notifications for Gas Safety Records in your iPhone Settings, under Notifications.',
+                      'Allow notifications for NG Gas Records in your iPhone Settings, under Notifications.',
                     );
                   }
                   set('remindersOn')(v === 'on');
@@ -196,7 +196,7 @@ export default function SettingsScreen() {
           <Row icon={{ ios: 'hand.raised', md: 'privacy_tip' }} title="Privacy policy" onPress={() => Linking.openURL(PRIVACY_URL)} last />
         </Card>
         <Text style={[styles.footer, { color: c.textSecondary }]}>
-          Gas Safety Records {version}
+          NG Gas Records {version}
           {'\n'}Records are saved only on this device. Nothing is sent anywhere unless you share it.
           {'\n'}Keep your records for at least six years (Gas Safe Register Registration Policy).
           {'\n'}You are responsible for the checks and what each record says.
