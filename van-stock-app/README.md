@@ -2,7 +2,8 @@
 
 An iPhone app for keeping track of the stock in your van.
 
-- **Stock**: every item with − / + buttons, search, a filter by van location and a "Low" filter. Has a barcode scanner, and you can add example items to try it out.
+- **Stock**: every item with − / + buttons, search, a filter by van location and a "Low" filter. You can add example items to try it out.
+- **Barcode scanning**: point the camera at a barcode. A barcode you've already saved opens that item. A new one is looked up in free product databases (Open Food Facts, Open Products Facts and, in the app only, UPCitemdb), which fill in the name, picture, brand and size. Supermarket-type goods are usually found; trade parts often aren't, so type those in once and later scans find them.
 - **Restock**: everything at or below its restock level, with how many to get. You can share the list by text, WhatsApp or email, and mark items as restocked.
 - **History**: a log of everything used, added and restocked, plus a "Used today" total.
 - **More**: export to a spreadsheet (CSV), back up and restore (for example when you get a new phone), and links to support and the privacy policy.
@@ -28,6 +29,14 @@ You need a computer (Windows or Mac) with [Node.js](https://nodejs.org) (the LTS
 The phone and computer need to be on the same Wi-Fi. If they can't connect, run `npx expo start --tunnel` instead.
 
 Any change you save on the computer shows up on the phone straight away.
+
+## 1b. Try it in a phone browser
+
+The website version lives at `https://2vg6cdb48b-create.github.io/chest-rush-site/van-stock/app/` once this branch is merged into the branch your GitHub Pages site publishes from. Open it in Safari on your iPhone. The live barcode scanner and the product lookup both work there. To add it to your home screen, tap Share, then **Add to Home Screen**.
+
+Saved stock on the website stays in that browser only; it isn't shared with the app.
+
+To rebuild the website copy after changing the app, run `npm run build:site` and commit the `van-stock/app/` folder.
 
 ## 2. Publish to the App Store
 

@@ -12,12 +12,12 @@ import {
   StatusBadge,
   Stepper,
 } from '@/components/controls';
+import { ProductImage } from '@/components/product-image';
 import { ScreenHeader } from '@/components/screen-header';
 import { MaxContentWidth, Radius, Spacing, useTheme } from '@/constants/theme';
 import { compareItems, locationsOf, matchesSearch, needsRestock, statusOf } from '@/lib/stock';
 import { useStock } from '@/lib/store';
 import type { StockItem } from '@/lib/types';
-import { confirm } from '@/lib/ui';
 
 const ALL = '__all';
 const LOW = '__low';
@@ -31,7 +31,9 @@ export default function StockScreen() {
 
   const locations = useMemo(() => locationsOf(items), [items]);
   const lowCount = useMemo(() => items.filter(needsRestock).length, [items]);
-  const activeFilter = filter === ALL || filter === LOW || locations.includes(filter) ? filter : ALL;
+  const showImages = useMemo(() => items.some((it) => !!it.imageUrl), [items]);
+  const activeFilter =
+    filter === ALL || filter === LOW || locations.includes(filter) ? filter : ALL;
 
   const visible = useMemo(
     () =>
@@ -54,19 +56,15 @@ export default function StockScreen() {
     ...locations.map((loc) => ({ key: loc, label: loc })),
   ];
 
-  const onScanned = async (code: string) => {
+  const onScanned = (code: string) => {
     setScanning(false);
     const match = findByBarcode(code);
     if (match) {
       router.push({ pathname: '/item/[id]', params: { id: match.id } });
       return;
     }
-    const add = await confirm(
-      'New barcode',
-      `Nothing in your van has the barcode ${code} yet. Add it as a new item?`,
-      'Add item',
-    );
-    if (add) router.push({ pathname: '/item/[id]', params: { id: 'new', barcode: code } });
+    // Not in the van yet: open a new item, which looks the product up online.
+    router.push({ pathname: '/item/[id]', params: { id: 'new', barcode: code } });
   };
 
   const subtitle = !loaded
@@ -97,7 +95,11 @@ export default function StockScreen() {
         }>
         {items.length > 0 && (
           <>
-            <SearchField value={query} onChangeText={setQuery} placeholder="Search name, part no, location" />
+            <SearchField
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search name, part no, location"
+            />
             {chipOptions.length > 1 && (
               <Chips options={chipOptions} value={activeFilter} onChange={setFilter} />
             )}
@@ -112,7 +114,9 @@ export default function StockScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => <StockRow item={item} onAdjust={(d) => adjust(item.id, d)} />}
+        renderItem={({ item }) => (
+          <StockRow item={item} showImage={showImages} onAdjust={(d) => adjust(item.id, d)} />
+        )}
         ListEmptyComponent={
           !loaded ? undefined : items.length === 0 ? (
             <EmptyState
@@ -143,7 +147,15 @@ export default function StockScreen() {
   );
 }
 
-function StockRow({ item, onAdjust }: { item: StockItem; onAdjust: (delta: number) => void }) {
+function StockRow({
+  item,
+  showImage,
+  onAdjust,
+}: {
+  item: StockItem;
+  showImage: boolean;
+  onAdjust: (delta: number) => void;
+}) {
   const c = useTheme();
   const status = statusOf(item);
   const meta = [item.partNumber, item.location].filter(Boolean).join(' · ');
@@ -162,17 +174,20 @@ function StockRow({ item, onAdjust }: { item: StockItem; onAdjust: (delta: numbe
         accessibilityRole="button"
         accessibilityHint="Opens the item to edit it"
         onPress={() => router.push({ pathname: '/item/[id]', params: { id: item.id } })}>
-        <View style={styles.nameLine}>
-          <Text style={[styles.name, { color: c.text }]} numberOfLines={2}>
-            {item.name}
-          </Text>
-          <StatusBadge status={status} />
+        {showImage && <ProductImage uri={item.imageUrl} size={44} />}
+        <View style={styles.rowText}>
+          <View style={styles.nameLine}>
+            <Text style={[styles.name, { color: c.text }]} numberOfLines={2}>
+              {item.name}
+            </Text>
+            <StatusBadge status={status} />
+          </View>
+          {!!meta && (
+            <Text style={[styles.meta, { color: c.textSecondary }]} numberOfLines={1}>
+              {meta}
+            </Text>
+          )}
         </View>
-        {!!meta && (
-          <Text style={[styles.meta, { color: c.textSecondary }]} numberOfLines={1}>
-            {meta}
-          </Text>
-        )}
       </Pressable>
       <Stepper value={item.quantity} unit={item.unit} name={item.name} onChange={onAdjust} />
     </View>
@@ -199,7 +214,8 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.md,
     gap: Spacing.sm,
   },
-  rowMain: { flex: 1, gap: 2 },
+  rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  rowText: { flex: 1, gap: 2 },
   nameLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap' },
   name: { fontSize: 17, fontWeight: '600', flexShrink: 1 },
   meta: { fontSize: 14 },

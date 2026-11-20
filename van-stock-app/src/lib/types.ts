@@ -4,6 +4,8 @@ export type StockItem = {
   /** Supplier or manufacturer part number. */
   partNumber: string;
   barcode: string;
+  /** Product picture (from an online product lookup), or empty. */
+  imageUrl: string;
   /** Where the item lives in the van, e.g. "Shelf 2" or "Left drawer". */
   location: string;
   /** Unit of measure, e.g. "pcs", "m", "box". */

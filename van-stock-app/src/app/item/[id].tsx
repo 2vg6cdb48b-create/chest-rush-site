@@ -1,6 +1,8 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
+  ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,9 +15,11 @@ import {
 import { BarcodeScanner } from '@/components/barcode-scanner';
 import { Button, Card, SectionLabel, StatusBadge } from '@/components/controls';
 import { Icon } from '@/components/icon';
+import { ProductImage } from '@/components/product-image';
 import { MaxContentWidth, Radius, Spacing, useTheme } from '@/constants/theme';
 import { locationsOf, statusOf } from '@/lib/stock';
 import { describeMovement, timeAgo } from '@/lib/history';
+import { lookupProduct, type LookupResult, type ProductInfo } from '@/lib/product-lookup';
 import { useStock, type ItemFields } from '@/lib/store';
 import { confirm, notify, success, tap } from '@/lib/ui';
 
@@ -50,8 +54,54 @@ export default function ItemScreen() {
   const [partNumber, setPartNumber] = useState(existing?.partNumber ?? '');
   const [barcode, setBarcode] = useState(existing?.barcode ?? params.barcode ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
+  const [imageUrl, setImageUrl] = useState(existing?.imageUrl ?? '');
   const [scanning, setScanning] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  // A new item opened from a scan starts by looking its barcode up online.
+  const [lookup, setLookup] = useState<Lookup>(() =>
+    isNew && params.barcode ? { status: 'loading', code: params.barcode } : { status: 'idle' },
+  );
+  const lookupId = useRef(0);
+
+  const applyProduct = (p: ProductInfo) => {
+    // Add the brand in front unless the name already contains it ("Coca-Cola" vs "Coca Cola").
+    const squash = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const withBrand = p.brand && !squash(p.name).includes(squash(p.brand)) ? `${p.brand} ${p.name}` : p.name;
+    setName(withBrand);
+    if (p.imageUrl) setImageUrl(p.imageUrl);
+    if (p.details.length) setNotes((prev) => prev || p.details.join(' · '));
+  };
+
+  /** Shows a lookup's result. Fills in the form if the name was empty when the lookup started. */
+  const showResult = (code: string, result: LookupResult, nameWasEmpty: boolean) => {
+    if (result.status === 'found') {
+      if (nameWasEmpty) applyProduct(result.product);
+      setLookup({ status: 'found', code, product: result.product, applied: nameWasEmpty });
+    } else {
+      setLookup({ status: result.status, code });
+    }
+  };
+
+  const startLookup = (code: string) => {
+    const id = ++lookupId.current;
+    const nameWasEmpty = name.trim() === '';
+    setLookup({ status: 'loading', code });
+    lookupProduct(code).then((result) => {
+      if (id === lookupId.current) showResult(code, result, nameWasEmpty);
+    });
+  };
+
+  // A new item opened from a scan: look the barcode up once, as the screen opens.
+  const initialCode = isNew ? params.barcode : undefined;
+  useEffect(() => {
+    if (!initialCode) return;
+    const id = ++lookupId.current;
+    lookupProduct(initialCode).then((result) => {
+      if (id === lookupId.current) showResult(initialCode, result, true);
+    });
+    // showResult only sets state, so it doesn't need to be a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCode]);
 
   const locations = useMemo(() => locationsOf(stock.items), [stock.items]);
   const history = useMemo(
@@ -76,12 +126,11 @@ export default function ItemScreen() {
     name: name.trim() === '' ? 'Give the item a name' : '',
     quantity: qtyNum === null || Number.isNaN(qtyNum) ? 'Enter how many you have' : '',
     minLevel: Number.isNaN(minNum) ? 'Enter a number' : '',
-    fullLevel:
-      Number.isNaN(fullNum)
-        ? 'Enter a number'
-        : fullNum !== null && fullNum > 0 && minNum !== null && fullNum <= minNum
-          ? 'Should be more than the restock level'
-          : '',
+    fullLevel: Number.isNaN(fullNum)
+      ? 'Enter a number'
+      : fullNum !== null && fullNum > 0 && minNum !== null && fullNum <= minNum
+        ? 'Should be more than the restock level'
+        : '',
   };
   const hasErrors = Object.values(errors).some(Boolean);
   const previewStatus = statusOf({ quantity: qtyNum || 0, minLevel: minNum || 0 });
@@ -100,6 +149,7 @@ export default function ItemScreen() {
       location: location.trim(),
       partNumber: partNumber.trim(),
       barcode: barcode.trim(),
+      imageUrl,
       notes: notes.trim(),
     };
     const clash = fields.barcode ? stock.findByBarcode(fields.barcode) : undefined;
@@ -136,6 +186,7 @@ export default function ItemScreen() {
   const onScanned = (code: string) => {
     setScanning(false);
     setBarcode(code);
+    startLookup(code);
   };
 
   return (
@@ -143,9 +194,7 @@ export default function ItemScreen() {
       <Stack.Screen
         options={{
           title: isNew ? 'New item' : 'Edit item',
-          headerLeft: () => (
-            <HeaderButton label="Cancel" onPress={() => router.back()} />
-          ),
+          headerLeft: () => <HeaderButton label="Cancel" onPress={() => router.back()} />,
           headerRight: () => <HeaderButton label="Save" bold onPress={save} />,
         }}
       />
@@ -155,6 +204,15 @@ export default function ItemScreen() {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         contentInsetAdjustmentBehavior="automatic">
+        <ProductPanel
+          lookup={lookup}
+          imageUrl={imageUrl}
+          onUse={(p) => {
+            applyProduct(p);
+            setLookup((l) => (l.status === 'found' ? { ...l, applied: true } : l));
+          }}
+          onRemoveImage={() => setImageUrl('')}
+        />
         <Card style={styles.group}>
           <Field label="Name" error={showErrors ? errors.name : ''}>
             <Input
@@ -251,6 +309,16 @@ export default function ItemScreen() {
                 onPress={() => setScanning(true)}
               />
             </View>
+            {/^\d{6,14}$/.test(barcode.trim()) && lookup.status !== 'loading' && (
+              <Button
+                label="Look up product online"
+                variant="plain"
+                compact
+                icon={{ ios: 'magnifyingglass', md: 'search' }}
+                onPress={() => startLookup(barcode.trim())}
+                style={{ alignSelf: 'flex-start' }}
+              />
+            )}
           </Field>
           <Field label="Notes">
             <Input
@@ -277,7 +345,9 @@ export default function ItemScreen() {
                     i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
                   ]}>
                   <Text style={[styles.historyText, { color: c.text }]}>{describeMovement(m)}</Text>
-                  <Text style={[styles.historyTime, { color: c.textSecondary }]}>{timeAgo(m.at)}</Text>
+                  <Text style={[styles.historyTime, { color: c.textSecondary }]}>
+                    {timeAgo(m.at)}
+                  </Text>
                 </View>
               ))}
             </Card>
@@ -287,7 +357,8 @@ export default function ItemScreen() {
         {existing && (
           <>
             <Text style={[styles.footnote, { color: c.textSecondary }]}>
-              Added {new Date(existing.createdAt).toLocaleDateString()} · last changed {timeAgo(existing.updatedAt)}
+              Added {new Date(existing.createdAt).toLocaleDateString()} · last changed{' '}
+              {timeAgo(existing.updatedAt)}
             </Text>
             <Button
               label="Delete item"
@@ -304,11 +375,120 @@ export default function ItemScreen() {
   );
 }
 
-function HeaderButton({ label, onPress, bold }: { label: string; onPress: () => void; bold?: boolean }) {
+type Lookup =
+  | { status: 'idle' }
+  | { status: 'loading'; code: string }
+  | { status: 'found'; code: string; product: ProductInfo; applied: boolean }
+  | { status: 'not-found'; code: string }
+  | { status: 'offline'; code: string };
+
+/** Shows the product picture and what the online lookup found. */
+function ProductPanel({
+  lookup,
+  imageUrl,
+  onUse,
+  onRemoveImage,
+}: {
+  lookup: Lookup;
+  imageUrl: string;
+  onUse: (p: ProductInfo) => void;
+  onRemoveImage: () => void;
+}) {
+  const c = useTheme();
+  if (lookup.status === 'idle' && !imageUrl) return null;
+
+  if (lookup.status === 'loading') {
+    return (
+      <Card style={[styles.panel, styles.panelRow]}>
+        <ActivityIndicator color={c.primary} />
+        <Text style={[styles.panelText, { color: c.text }]}>Looking up {lookup.code}…</Text>
+      </Card>
+    );
+  }
+
+  if (lookup.status === 'not-found' || lookup.status === 'offline') {
+    return (
+      <Card style={[styles.panel, styles.panelRow]}>
+        <Icon
+          ios={lookup.status === 'offline' ? 'wifi.slash' : 'questionmark.circle'}
+          md={lookup.status === 'offline' ? 'wifi_off' : 'help'}
+          size={26}
+          color={c.textSecondary}
+        />
+        <Text style={[styles.panelText, { color: c.textSecondary }]}>
+          {lookup.status === 'offline'
+            ? Platform.OS === 'web'
+              ? 'Couldn’t reach the product databases. Check your connection. (The preview page inside Claude can’t look products up, but the iPhone app and the Van Stock website can.)'
+              : 'Couldn’t reach the product databases. Check your signal, or fill the details in yourself.'
+            : `No match for ${lookup.code} in the free product databases. Type the name below and it’ll be found next time you scan it.`}
+        </Text>
+      </Card>
+    );
+  }
+
+  const product = lookup.status === 'found' ? lookup.product : null;
+  const picture =
+    product && !(lookup.status === 'found' && lookup.applied) ? product.imageUrl : imageUrl;
+  return (
+    <Card style={styles.panel}>
+      <View style={styles.panelRow}>
+        <ProductImage uri={picture} size={84} />
+        <View style={{ flex: 1, gap: 2 }}>
+          {product ? (
+            <>
+              <Text style={[styles.productName, { color: c.text }]} numberOfLines={3}>
+                {product.name}
+              </Text>
+              {!!product.brand && (
+                <Text style={[styles.panelText, { color: c.textSecondary }]}>{product.brand}</Text>
+              )}
+              {product.details.length > 0 && (
+                <Text style={[styles.productDetails, { color: c.textSecondary }]} numberOfLines={2}>
+                  {product.details.join(' · ')}
+                </Text>
+              )}
+            </>
+          ) : (
+            <Text style={[styles.panelText, { color: c.textSecondary }]}>Product picture</Text>
+          )}
+        </View>
+      </View>
+      {lookup.status === 'found' && lookup.applied && (
+        <Text style={[styles.productDetails, { color: c.ok }]}>
+          Filled in from {lookup.product.source}. Check the details are right.
+        </Text>
+      )}
+      <View style={styles.panelButtons}>
+        {lookup.status === 'found' && !lookup.applied && (
+          <Button label="Use these details" compact onPress={() => onUse(lookup.product)} />
+        )}
+        {!!imageUrl && (lookup.status !== 'found' || lookup.applied) && (
+          <Button label="Remove picture" compact variant="plain" onPress={onRemoveImage} />
+        )}
+      </View>
+    </Card>
+  );
+}
+
+function HeaderButton({
+  label,
+  onPress,
+  bold,
+}: {
+  label: string;
+  onPress: () => void;
+  bold?: boolean;
+}) {
   const c = useTheme();
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={10} style={styles.headerButton}>
-      <Text style={{ color: c.primary, fontSize: 17, fontWeight: bold ? '700' : '400' }}>{label}</Text>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      hitSlop={10}
+      style={styles.headerButton}>
+      <Text style={{ color: c.primary, fontSize: 17, fontWeight: bold ? '700' : '400' }}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -431,11 +611,13 @@ function Suggestions({
           <Pressable
             key={opt}
             onPress={() => onPick(opt)}
-            style={[
-              styles.suggestion,
-              { backgroundColor: active ? c.primary : c.primarySoft },
-            ]}>
-            <Text style={{ color: active ? c.primaryText : c.primary, fontSize: 14, fontWeight: '600' }}>
+            style={[styles.suggestion, { backgroundColor: active ? c.primary : c.primarySoft }]}>
+            <Text
+              style={{
+                color: active ? c.primaryText : c.primary,
+                fontSize: 14,
+                fontWeight: '600',
+              }}>
               {opt}
             </Text>
           </Pressable>
@@ -499,5 +681,11 @@ const styles = StyleSheet.create({
   footnote: { fontSize: 13, textAlign: 'center', marginTop: Spacing.xl },
   delete: { marginTop: Spacing.md },
   headerButton: { paddingHorizontal: Spacing.xs },
+  panel: { marginBottom: Spacing.lg, gap: Spacing.md },
+  panelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  panelText: { fontSize: 15, lineHeight: 21, flex: 1 },
+  productName: { fontSize: 17, fontWeight: '700' },
+  productDetails: { fontSize: 13, lineHeight: 18 },
+  panelButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   missing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.lg },
 });

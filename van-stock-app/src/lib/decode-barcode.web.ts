@@ -21,13 +21,63 @@ const FORMATS = [
   BarcodeFormat.DATA_MATRIX,
 ];
 
-function makeReader() {
+function makeReader(tryHarder: boolean) {
   const reader = new MultiFormatReader();
   const hints = new Map<DecodeHintType, unknown>();
   hints.set(DecodeHintType.POSSIBLE_FORMATS, FORMATS);
-  hints.set(DecodeHintType.TRY_HARDER, true);
+  if (tryHarder) hints.set(DecodeHintType.TRY_HARDER, true);
   reader.setHints(hints);
   return reader;
+}
+
+const quickReader = makeReader(false);
+const thoroughReader = makeReader(true);
+
+/** Reads a barcode from greyscale pixels, or returns null. */
+function decodeGrey(grey: Uint8ClampedArray, width: number, height: number, thorough: boolean) {
+  const reader = thorough ? thoroughReader : quickReader;
+  try {
+    const bitmap = new BinaryBitmap(new HybridBinarizer(new RGBLuminanceSource(grey, width, height)));
+    const text = reader.decode(bitmap).getText().trim();
+    return text || null;
+  } catch {
+    return null;
+  } finally {
+    reader.reset();
+  }
+}
+
+function toGrey(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  const { data } = ctx.getImageData(0, 0, width, height);
+  const grey = new Uint8ClampedArray(width * height);
+  for (let i = 0, p = 0; p < grey.length; i += 4, p++) {
+    grey[p] = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
+  }
+  return grey;
+}
+
+let frameCanvas: HTMLCanvasElement | null = null;
+
+/**
+ * Reads a barcode from the middle band of a live video frame (where the on-screen frame is).
+ * Quick by default; pass thorough for a slower, more careful pass.
+ */
+export function decodeVideoFrame(video: HTMLVideoElement, thorough: boolean): string | null {
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  if (!vw || !vh) return null;
+  const cropW = vw * 0.9;
+  const cropH = Math.min(vh * 0.5, cropW * 0.75);
+  const scale = Math.min(1, 900 / cropW);
+  const w = Math.round(cropW * scale);
+  const h = Math.round(cropH * scale);
+  frameCanvas ??= document.createElement('canvas');
+  frameCanvas.width = w;
+  frameCanvas.height = h;
+  const ctx = frameCanvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(video, (vw - cropW) / 2, (vh - cropH) / 2, cropW, cropH, 0, 0, w, h);
+  return decodeGrey(toGrey(ctx, w, h), w, h, thorough);
 }
 
 function loadImage(blob: Blob): Promise<HTMLImageElement> {
@@ -61,32 +111,18 @@ function greyscale(img: HTMLImageElement, maxSide: number, rotate: boolean) {
     ctx.rotate(Math.PI / 2);
   }
   ctx.drawImage(img, 0, 0, w, h);
-  const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const grey = new Uint8ClampedArray(width * height);
-  for (let i = 0, p = 0; p < grey.length; i += 4, p++) {
-    grey[p] = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
-  }
-  return { grey, width, height };
+  return { grey: toGrey(ctx, canvas.width, canvas.height), width: canvas.width, height: canvas.height };
 }
 
 /** Reads a barcode from a photo. Resolves the barcode text, or null if none was found. */
 export async function decodeBarcodeFromImage(blob: Blob): Promise<string | null> {
   const img = await loadImage(blob);
-  const reader = makeReader();
   // Phone photos are large; try a few sizes, upright and turned, until one reads.
   for (const maxSide of [1200, 1800, 800]) {
     for (const rotate of [false, true]) {
       const { grey, width, height } = greyscale(img, maxSide, rotate);
-      try {
-        const bitmap = new BinaryBitmap(new HybridBinarizer(new RGBLuminanceSource(grey, width, height)));
-        const result = reader.decode(bitmap);
-        const text = result.getText().trim();
-        if (text) return text;
-      } catch {
-        // Not found at this size or angle; try the next.
-      } finally {
-        reader.reset();
-      }
+      const text = decodeGrey(grey, width, height, true);
+      if (text) return text;
     }
   }
   return null;
