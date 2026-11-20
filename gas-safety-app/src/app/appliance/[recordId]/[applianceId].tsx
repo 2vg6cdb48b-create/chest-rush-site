@@ -11,7 +11,18 @@ import { useStore } from '@/lib/store';
 import type { Appliance, Classification, FlueType } from '@/lib/types';
 import { confirm } from '@/lib/ui';
 
-const TYPES = ['Boiler', 'Combi boiler', 'Fire', 'Cooker', 'Hob', 'Oven', 'Water heater', 'Warm air heater', 'Back boiler'];
+const TYPES = [
+  'Combi boiler',
+  'System boiler',
+  'Heat only boiler',
+  'Back boiler',
+  'Fire',
+  'Cooker',
+  'Hob',
+  'Oven',
+  'Water heater',
+  'Warm air heater',
+];
 const LOCATIONS = ['Kitchen', 'Utility', 'Lounge', 'Dining room', 'Bathroom', 'Airing cupboard', 'Bedroom', 'Hall', 'Loft', 'Garage'];
 const FLUES: { value: FlueType; label: string }[] = [
   { value: 'RS', label: 'Room sealed' },
