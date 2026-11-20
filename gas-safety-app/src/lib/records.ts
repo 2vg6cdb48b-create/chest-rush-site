@@ -18,6 +18,7 @@ export function emptyEngineer(): Engineer {
     signature: null,
     recordPrefix: 'LGSR-',
     nextRecordNumber: 1,
+    lastBackupAt: null,
   };
 }
 
@@ -254,6 +255,9 @@ export function applianceProblems(a: Appliance): string[] {
   if (!a.type.trim()) p.push('appliance type');
   const fullCheck = a.landlordsAppliance === 'yes' && a.inspected === 'yes';
   if (fullCheck) {
+    // Gas Safe Register's Registration Policy asks for make, model and location on work records.
+    if (!a.make.trim()) p.push('make');
+    if (!a.model.trim()) p.push('model');
     if (!a.flueType) p.push('flue type');
     if (!a.operatingPressure.trim() && !a.heatInput.trim() && !(a.coPpm.trim() && a.co2Percent.trim())) {
       p.push('operating pressure, heat input or combustion readings');
@@ -267,6 +271,7 @@ export function applianceProblems(a: Appliance): string[] {
   const faulty = applianceHasFault(a);
   if (faulty && !a.defects.trim()) p.push('defects identified');
   if (a.safeToUse === 'no' && a.classification === 'none') p.push('classification (AR or ID)');
+  if (a.defects.trim() && !a.remedialAction.trim()) p.push('remedial action taken');
   if (a.classification !== 'none' && !a.warningNoticeIssued) p.push('warning notice issued');
   return p;
 }
@@ -285,8 +290,19 @@ export function issueProblems(r: GasRecord, engineer: Engineer): string[] {
     const missing = applianceProblems(a);
     if (missing.length) p.push(`Appliance ${i + 1}: ${missing.join(', ')}`);
   });
+  const installation: [string, string][] = [
+    ['gas tightness test', r.tightnessTest],
+    ['emergency control valve', r.ecvAccessible],
+    ['equipotential bonding', r.bonding],
+    ['pipework visual inspection', r.pipeworkVisual],
+  ];
+  const unanswered = installation.filter(([, v]) => !v).map(([label]) => label);
+  if (unanswered.length) p.push(`Installation: ${unanswered.join(', ')}`);
   if (installationHasFault(r) && !r.installationDefects.trim()) {
     p.push('Installation: describe the defect');
+  }
+  if (r.installationDefects.trim() && !r.installationRemedial.trim()) {
+    p.push('Installation: remedial action taken');
   }
   if (!r.engineerSignature) p.push('Your signature');
   return p;
@@ -322,6 +338,7 @@ export function parseAppData(raw: unknown): AppData {
     address: address(e.address),
     signature: signature(e.signature),
     nextRecordNumber: Math.max(1, Number(e.nextRecordNumber) || 1),
+    lastBackupAt: typeof e.lastBackupAt === 'number' ? e.lastBackupAt : null,
     recordPrefix: typeof e.recordPrefix === 'string' ? e.recordPrefix : 'LGSR-',
   };
   const records = src.records

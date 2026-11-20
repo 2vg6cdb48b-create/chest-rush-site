@@ -86,10 +86,10 @@ export default function ApplianceScreen() {
             </Field>
             <View style={styles.inline}>
               <View style={{ flex: 1 }}>
-                <TextField label="Make" value={a.make} onChange={(make) => patch({ make })} autoCapitalize="words" />
+                <TextField label="Make" value={a.make} onChange={(make) => patch({ make })} autoCapitalize="words" placeholder="or Unknown" />
               </View>
               <View style={{ flex: 1 }}>
-                <TextField label="Model" value={a.model} onChange={(model) => patch({ model })} autoCapitalize="words" />
+                <TextField label="Model" value={a.model} onChange={(model) => patch({ model })} autoCapitalize="words" placeholder="or Unknown" />
               </View>
             </View>
             <CheckRow
@@ -193,6 +193,7 @@ export default function ApplianceScreen() {
                   onChange={(remedialAction) => patch({ remedialAction })}
                   multiline
                   style={{ minHeight: 70, textAlignVertical: 'top' }}
+                  hint="If nothing was done, say so, e.g. “None – responsible person advised”."
                 />
               </>
             )}

@@ -30,6 +30,7 @@ type StoreValue = {
   issueRecord: (id: string) => void;
   deleteRecord: (id: string) => void;
   saveEngineer: (engineer: Engineer) => void;
+  markBackedUp: () => void;
   addExample: () => string;
   replaceAll: (data: AppData) => void;
   clearAll: () => void;
@@ -124,6 +125,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteRecord: (id) =>
         setData((d) => ({ ...d, records: d.records.filter((r) => r.id !== id) })),
       saveEngineer: (engineer) => setData((d) => ({ ...d, engineer })),
+      markBackedUp: () =>
+        setData((d) => ({ ...d, engineer: { ...d.engineer, lastBackupAt: Date.now() } })),
       addExample: () => insert(exampleRecord),
       replaceAll: (next) => setData(next),
       clearAll: () => setData((d) => ({ ...emptyData(), engineer: d.engineer })),

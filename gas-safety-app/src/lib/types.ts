@@ -102,6 +102,8 @@ export type Engineer = {
   signature: Signature | null;
   recordPrefix: string;
   nextRecordNumber: number;
+  /** When a backup file was last saved (ms), or null if never. */
+  lastBackupAt: number | null;
 };
 
 export type AppData = {

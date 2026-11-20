@@ -46,6 +46,11 @@ export default function RecordsScreen() {
   const open = (id: string) => router.push({ pathname: '/record/[id]', params: { id } });
   const create = () => open(createRecord());
   const setupNeeded = loaded && (!engineer.name.trim() || !engineer.gasSafeNumber.trim());
+  const [now] = useState(() => Date.now());
+  const backupDue =
+    loaded &&
+    records.some((r) => r.status === 'issued') &&
+    (!engineer.lastBackupAt || now - engineer.lastBackupAt > 30 * 86400000);
 
   return (
     <View style={[styles.root, { backgroundColor: c.background }]}>
@@ -82,16 +87,25 @@ export default function RecordsScreen() {
         keyboardDismissMode="on-drag"
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          setupNeeded ? (
-            <Pressable
-              onPress={() => router.navigate('/settings')}
-              style={[styles.setup, { backgroundColor: c.lowSoft }]}>
-              <Icon ios="person.badge.key" md="badge" size={22} color={c.low} />
-              <Text style={[styles.setupText, { color: c.text }]}>
-                Add your name and Gas Safe number in Settings. They go on every record.
-              </Text>
-              <Icon ios="chevron.right" md="chevron_right" size={14} color={c.textSecondary} />
-            </Pressable>
+          setupNeeded || backupDue ? (
+            <View style={{ gap: Spacing.sm, marginBottom: Spacing.sm }}>
+              {setupNeeded && (
+                <Banner
+                  icon={{ ios: 'person.badge.key', md: 'badge' }}
+                  text="Add your name and Gas Safe number in Settings. They go on every record."
+                />
+              )}
+              {backupDue && (
+                <Banner
+                  icon={{ ios: 'externaldrive.badge.exclamationmark', md: 'backup' }}
+                  text={
+                    engineer.lastBackupAt
+                      ? `Last backup ${new Date(engineer.lastBackupAt).toLocaleDateString('en-GB')}. Records only live on this phone, so back up regularly.`
+                      : 'Your records only live on this phone. Back them up to iCloud Drive or Files in Settings.'
+                  }
+                />
+              )}
+            </View>
           ) : undefined
         }
         renderItem={({ item }) => <RecordRow record={item} onPress={() => open(item.id)} />}
@@ -116,6 +130,17 @@ export default function RecordsScreen() {
         }
       />
     </View>
+  );
+}
+
+function Banner({ icon, text }: { icon: { ios: 'person.badge.key' | 'externaldrive.badge.exclamationmark'; md: 'badge' | 'backup' }; text: string }) {
+  const c = useTheme();
+  return (
+    <Pressable onPress={() => router.navigate('/settings')} style={[styles.setup, { backgroundColor: c.lowSoft }]}>
+      <Icon ios={icon.ios} md={icon.md} size={22} color={c.low} />
+      <Text style={[styles.setupText, { color: c.text }]}>{text}</Text>
+      <Icon ios="chevron.right" md="chevron_right" size={14} color={c.textSecondary} />
+    </Pressable>
   );
 }
 
@@ -171,7 +196,6 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     padding: Spacing.lg,
     borderRadius: Radius.md,
-    marginBottom: Spacing.sm,
   },
   setupText: { flex: 1, fontSize: 15, lineHeight: 21 },
   row: {

@@ -13,6 +13,7 @@ A phone app for Gas Safe registered engineers to fill in **landlord gas safety r
 - Gas Safety (Installation and Use) Regulations 1998, regulation 36(3)(c), for what the record must contain, and regulation 26(9), for what the check must examine.
 - HSE: [Gas safety check records and what to keep](https://www.hse.gov.uk/gas/landlords/gassaferecord.htm). Electronic records and signatures are acceptable.
 - Gas Safe Register technical guidance (*Registered Gas Engineer*, June 2021): tightness test and ECV check recommended, only gas safety defects (AR/ID under IGEM/G/11) go on the record, and the 10–12 month rule for due dates.
+- Gas Safe Register Registration Policy (*Work records: a reminder*, April 2023): work records need the appliance make, model and location, positive recording of the essential checks and results, actions on unsafe situations, and the engineer's signature, and must be **kept for at least six years**. The app requires these before issuing and reminds you to back up.
 
 You remain responsible for the checks you carry out and for what each record says. Compare the PDF with the paper or app records you use now before relying on it.
 

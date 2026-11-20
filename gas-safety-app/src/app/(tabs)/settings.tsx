@@ -30,6 +30,7 @@ export default function SettingsScreen() {
         JSON.stringify({ ...store.data, exportedAt: new Date().toISOString() }),
         'application/json',
       );
+      store.markBackedUp();
     } catch (err) {
       notify('Could not back up', err instanceof Error ? err.message : String(err));
     }
@@ -60,7 +61,7 @@ export default function SettingsScreen() {
   const deleteAll = async () => {
     const ok = await confirm(
       'Delete all records?',
-      'Every record will be removed from this device. Your own details stay. Landlords must keep records for at least two years, so back up first if you might need them.',
+      'Every record will be removed from this device. Your own details stay. Gas Safe Register asks registered businesses to keep work records for at least six years, so back up first.',
       'Delete all',
       true,
     );
@@ -135,7 +136,11 @@ export default function SettingsScreen() {
           <Row
             icon={{ ios: 'externaldrive.badge.icloud', md: 'backup' }}
             title="Back up"
-            detail="Save all records to Files, iCloud Drive or email"
+            detail={
+              e.lastBackupAt
+                ? `Last backup ${new Date(e.lastBackupAt).toLocaleDateString('en-GB')}. Save all records to Files, iCloud Drive or email.`
+                : 'Never backed up. Save all records to Files, iCloud Drive or email.'
+            }
             onPress={backup}
           />
           <Row
@@ -155,6 +160,7 @@ export default function SettingsScreen() {
         <Text style={[styles.footer, { color: c.textSecondary }]}>
           Gas Safety Records {version}
           {'\n'}Records are saved only on this device. Nothing is sent anywhere unless you share it.
+          {'\n'}Keep your records for at least six years (Gas Safe Register Registration Policy).
           {'\n'}You are responsible for the checks and what each record says.
         </Text>
       </ScrollView>

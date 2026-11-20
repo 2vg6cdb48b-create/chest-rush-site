@@ -124,7 +124,7 @@ export default function RecordScreen() {
     const ok = await confirm(
       'Delete this record?',
       issued
-        ? 'Landlords must keep records for at least two years. Only delete it if it was made by mistake.'
+        ? 'Gas Safe Register asks registered businesses to keep work records for at least six years. Only delete it if it was made by mistake.'
         : 'This draft will be removed.',
       'Delete',
       true,
