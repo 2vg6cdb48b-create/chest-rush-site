@@ -1,17 +1,13 @@
 import * as DocumentPicker from 'expo-document-picker';
 
-/** In a browser, "sharing" a file downloads it. */
-export async function shareTextFile(filename: string, content: string, mimeType: string) {
-  const doc = (globalThis as any).document;
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const link = doc.createElement('a');
-  link.href = url;
-  link.download = filename;
-  doc.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+import { notify } from './ui';
+
+/** The browser preview can't save files, so point people to the iPhone app. */
+export async function shareTextFile(_filename: string, _content: string, _mimeType: string) {
+  notify(
+    'Works in the iPhone app',
+    'Saving files isn’t available in the browser preview. In the iPhone app this opens the share sheet so you can save to Files, iCloud Drive or email.',
+  );
 }
 
 export async function pickTextFile(): Promise<string | null> {

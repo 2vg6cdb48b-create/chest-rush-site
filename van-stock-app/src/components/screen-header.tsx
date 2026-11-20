@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MaxContentWidth, Spacing, useTheme } from '@/constants/theme';
@@ -18,8 +18,10 @@ export function ScreenHeader({
 }) {
   const c = useTheme();
   const insets = useSafeAreaInsets();
+  // On the web the page itself is already padded clear of the phone's status bar.
+  const top = Platform.OS === 'web' ? 0 : insets.top;
   return (
-    <View style={{ backgroundColor: c.background, paddingTop: insets.top + Spacing.sm }}>
+    <View style={{ backgroundColor: c.background, paddingTop: top + Spacing.sm }}>
       <View style={styles.inner}>
         <View style={styles.row}>
           <View style={styles.titles}>

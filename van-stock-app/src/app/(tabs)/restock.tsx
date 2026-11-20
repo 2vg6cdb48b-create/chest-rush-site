@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { FlatList, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, EmptyState, IconButton, StatusBadge, Stepper } from '@/components/controls';
 import { ScreenHeader } from '@/components/screen-header';
@@ -15,7 +15,7 @@ import {
 } from '@/lib/stock';
 import { useStock } from '@/lib/store';
 import type { StockItem } from '@/lib/types';
-import { notify, success } from '@/lib/ui';
+import { notify, shareText, success } from '@/lib/ui';
 
 export default function RestockScreen() {
   const c = useTheme();
@@ -34,7 +34,7 @@ export default function RestockScreen() {
 
   const share = async () => {
     try {
-      await Share.share({ message: restockText(list) });
+      await shareText(restockText(list));
     } catch {
       notify('Could not share', 'Sharing is not available here.');
     }

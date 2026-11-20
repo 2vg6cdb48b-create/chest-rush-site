@@ -2,7 +2,9 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 
+import { DialogHost } from '@/components/dialog-host';
 import { useTheme } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { StockProvider, useStock } from '@/lib/store';
@@ -22,10 +24,15 @@ export default function RootLayout() {
       <StockProvider>
         <HideSplashWhenLoaded />
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-        <Stack screenOptions={{ contentStyle: { backgroundColor: c.background } }}>
+        <Stack
+          screenOptions={{
+            contentStyle: { backgroundColor: c.background },
+            ...(Platform.OS === 'web' ? { headerStatusBarHeight: 0 } : null),
+          }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="item/[id]" options={{ presentation: 'modal', title: 'Item' }} />
         </Stack>
+        <DialogHost />
       </StockProvider>
     </ThemeProvider>
   );
