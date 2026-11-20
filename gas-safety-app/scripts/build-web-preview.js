@@ -63,6 +63,28 @@ ${bundle}
 </script>
 `;
 
+// Phones may keep a copy of the page for a while (GitHub Pages allows 10 minutes), so the
+// website copy checks for a newer build when it opens and reloads once if there is one.
+const buildId = Date.now().toString(36);
+const updateCheck = `<meta name="app-build" content="${buildId}">
+<script>
+  (function () {
+    try {
+      fetch('${base}/?build-check=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+          var m = t.match(/name="app-build" content="([^"]+)"/);
+          if (!m || m[1] === '${buildId}') return;
+          var key = 'reloaded-for-' + m[1];
+          if (sessionStorage.getItem(key)) return;
+          sessionStorage.setItem(key, '1');
+          location.replace(location.pathname + '?v=' + m[1] + location.hash);
+        })
+        .catch(function () {});
+    } catch (e) {}
+  })();
+</script>`;
+
 // The preview host adds its own <html>/<head>/<body>; a website copy needs a full document.
 const page = base
   ? `<!doctype html>
@@ -75,6 +97,7 @@ const page = base
 <meta name="theme-color" content="#E4501A">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }</style>
+${updateCheck}
 </head>
 <body>
 ${content}</body>

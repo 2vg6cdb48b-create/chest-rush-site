@@ -8,6 +8,24 @@
 <meta name="theme-color" content="#E4501A">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }</style>
+<meta name="app-build" content="mwp4vdbp">
+<script>
+  (function () {
+    try {
+      fetch('/chest-rush-site/gas-records/app/?build-check=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+          var m = t.match(/name="app-build" content="([^"]+)"/);
+          if (!m || m[1] === 'mwp4vdbp') return;
+          var key = 'reloaded-for-' + m[1];
+          if (sessionStorage.getItem(key)) return;
+          sessionStorage.setItem(key, '1');
+          location.replace(location.pathname + '?v=' + m[1] + location.hash);
+        })
+        .catch(function () {});
+    } catch (e) {}
+  })();
+</script>
 </head>
 <body>
 <title>NG Gas Records</title>
