@@ -26,7 +26,7 @@ export function DialogHost() {
   };
 
   return (
-    <Modal transparent visible animationType="fade" onRequestClose={() => close(false)}>
+    <Modal transparent visible animationType="none" onRequestClose={() => close(false)}>
       <View style={styles.backdrop}>
         <View style={[styles.box, { backgroundColor: c.card, borderColor: c.border }]}>
           <Text style={[styles.title, { color: c.text }]}>{current.title}</Text>
