@@ -1,9 +1,11 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Autocomplete } from '@/components/autocomplete';
 import { Button, Card, Choice, SectionLabel } from '@/components/controls';
 import { CheckRow, Field, Input, NumberField, Suggestions, TextField, formStyles } from '@/components/form';
 import { MaxContentWidth, Radius, Spacing, useTheme } from '@/constants/theme';
+import { catalogueFor, kindOf } from '@/data/appliances';
 import { applianceHasFault, applianceProblems, coRatio } from '@/lib/records';
 import { useStore } from '@/lib/store';
 import type { Appliance, Classification, FlueType } from '@/lib/types';
@@ -30,6 +32,39 @@ export default function ApplianceScreen() {
   const index = record?.appliances.findIndex((a) => a.id === applianceId) ?? -1;
   const a = index >= 0 ? record!.appliances[index] : undefined;
 
+  // Makes and models from your other records, most used first, for the suggestions.
+  const kind = kindOf(a?.type ?? '');
+  const learned = (() => {
+    const makes = new Map<string, { name: string; count: number }>();
+    const models = new Map<string, Map<string, { name: string; count: number }>>();
+    const add = (m: Map<string, { name: string; count: number }>, name: string) => {
+      const key = name.toLowerCase();
+      const cur = m.get(key);
+      m.set(key, { name: cur?.name ?? name, count: (cur?.count ?? 0) + 1 });
+    };
+    for (const r of store.records) {
+      for (const ap of r.appliances) {
+        if (ap.id === applianceId) continue;
+        // Only suggest makes used for the same kind of appliance (boilers for boilers, and so on).
+        if (kind !== 'other' && kindOf(ap.type) !== kind) continue;
+        const make = ap.make.trim();
+        if (!make || /^unknown$/i.test(make)) continue;
+        add(makes, make);
+        const model = ap.model.trim();
+        if (!model || /^unknown$/i.test(model)) continue;
+        const forMake = models.get(make.toLowerCase()) ?? new Map();
+        add(forMake, model);
+        models.set(make.toLowerCase(), forMake);
+      }
+    }
+    const sorted = (m: Map<string, { name: string; count: number }>) =>
+      [...m.values()].sort((x, y) => y.count - x.count).map((v) => v.name);
+    return {
+      makes: sorted(makes),
+      modelsFor: (make: string) => sorted(models.get(make.trim().toLowerCase()) ?? new Map()),
+    };
+  })();
+
   if (!record || !a) {
     return (
       <View style={[styles.missing, { backgroundColor: c.background }]}>
@@ -46,6 +81,15 @@ export default function ApplianceScreen() {
       appliances: cur.appliances.map((x) => (x.id === a.id ? { ...x, ...p } : x)),
     }));
   const fullCheck = a.landlordsAppliance === 'yes' && a.inspected === 'yes';
+  const catalogue = catalogueFor(a.type);
+  const unique = (list: string[]) => {
+    const seen = new Set<string>();
+    return list.filter((x) => !seen.has(x.toLowerCase()) && seen.add(x.toLowerCase()));
+  };
+  const makeOptions = unique([...learned.makes, ...Object.keys(catalogue).sort()]);
+  const catalogueMake = Object.keys(catalogue).find((k) => k.toLowerCase() === a.make.trim().toLowerCase());
+  const learnedModels = learned.modelsFor(a.make);
+  const modelOptions = unique([...learnedModels, ...(catalogueMake ? catalogue[catalogueMake] : [])]);
   const fault = applianceHasFault(a);
   const missing = applianceProblems(a);
   const ratio = coRatio(a.coPpm, a.co2Percent);
@@ -84,14 +128,23 @@ export default function ApplianceScreen() {
               <Input value={a.type} onChangeText={(type) => patch({ type })} placeholder="e.g. Combi boiler" autoCapitalize="sentences" />
               <Suggestions options={TYPES} value={a.type} onPick={(type) => patch({ type })} />
             </Field>
-            <View style={styles.inline}>
-              <View style={{ flex: 1 }}>
-                <TextField label="Make" value={a.make} onChange={(make) => patch({ make })} autoCapitalize="words" placeholder="or Unknown" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <TextField label="Model" value={a.model} onChange={(model) => patch({ model })} autoCapitalize="words" placeholder="or Unknown" />
-              </View>
-            </View>
+            <Autocomplete
+              label="Make"
+              value={a.make}
+              onChange={(make) => patch({ make })}
+              options={makeOptions}
+              recent={new Set(learned.makes)}
+              placeholder="Start typing the make (or Unknown)"
+            />
+            <Autocomplete
+              label="Model"
+              value={a.model}
+              onChange={(model) => patch({ model })}
+              options={modelOptions}
+              recent={new Set(learnedModels)}
+              placeholder={catalogueMake ? `e.g. ${catalogue[catalogueMake][0] ?? 'model'} (or Unknown)` : 'Model (or Unknown)'}
+              hint={catalogueMake && catalogue[catalogueMake].length ? 'Pick the range, then add the output if you like, e.g. 30kW.' : undefined}
+            />
             <CheckRow
               label="Landlord's appliance"
               kind="yesNo"
