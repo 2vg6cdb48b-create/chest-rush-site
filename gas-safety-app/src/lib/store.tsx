@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 
 import {
   emptyData,
+  engineerDetailsOf,
   exampleRecord,
   newRecord,
   parseAppData,
@@ -86,7 +87,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return {
           ...d,
           engineer: next.engineer,
-          records: [{ ...record, number: next.number }, ...d.records],
+          // New records are signed with your saved signature automatically.
+          records: [
+            {
+              ...record,
+              number: next.number,
+              engineerSignature: record.engineerSignature ?? d.engineer.signature,
+            },
+            ...d.records,
+          ],
         };
       });
       return record.id;
@@ -119,7 +128,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setData((d) => ({
           ...d,
           records: d.records.map((r) =>
-            r.id === id ? { ...r, status: 'issued', issuedAt: Date.now(), updatedAt: Date.now() } : r,
+            r.id === id
+              ? {
+                  ...r,
+                  status: 'issued',
+                  issuedAt: Date.now(),
+                  updatedAt: Date.now(),
+                  engineerDetails: engineerDetailsOf(d.engineer),
+                }
+              : r,
           ),
         })),
       deleteRecord: (id) =>

@@ -21,6 +21,7 @@ import {
   applianceHasFault,
   applianceProblems,
   applianceTitle,
+  engineerDetailsOf,
   formatLongDate,
   installationHasFault,
   issueProblems,
@@ -84,7 +85,9 @@ export default function RecordScreen() {
   const share = async (asIssued = false) => {
     setSharing(true);
     try {
-      const doc = asIssued ? { ...r, status: 'issued' as const } : r;
+      const doc = asIssued
+        ? { ...r, status: 'issued' as const, engineerDetails: engineerDetailsOf(engineer) }
+        : r;
       await shareRecordPdf(recordHtml(doc, engineer), pdfName(doc));
     } catch (e) {
       notify('Could not create the PDF', e instanceof Error ? e.message : String(e));
@@ -117,7 +120,7 @@ export default function RecordScreen() {
       'It goes back to a draft. Issue it again when you’ve finished, and send the landlord the new copy.',
       'Edit',
     );
-    if (ok) patch({ status: 'draft', issuedAt: null });
+    if (ok) patch({ status: 'draft', issuedAt: null, engineerDetails: null });
   };
 
   const remove = async () => {

@@ -55,7 +55,9 @@ function field(label: string, value: string) {
 const FLUE: Record<string, string> = { RS: 'RS', OF: 'OF', FL: 'FL', na: 'N/A' };
 
 /** The record as a printable A4 landscape page, laid out like a paper landlord's gas safety record. */
-export function recordHtml(r: GasRecord, engineer: Engineer): string {
+export function recordHtml(r: GasRecord, currentEngineer: Engineer): string {
+  // An issued record keeps the details it was issued with.
+  const engineer = r.engineerDetails ?? currentEngineer;
   const minRows = 2;
   const rows: (Appliance | null)[] = [...r.appliances];
   while (rows.length < minRows) rows.push(null);

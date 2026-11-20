@@ -81,6 +81,8 @@ export type GasRecord = {
   installationClassification: Classification;
   notes: string;
   engineerSignature: Signature | null;
+  /** Your details as they were when the record was issued, so old records don't change. */
+  engineerDetails: EngineerDetails | null;
   receivedByName: string;
   receivedByRole: 'Tenant' | 'Landlord' | 'Agent' | 'Homeowner' | '';
   receivedBySignature: Signature | null;
@@ -105,6 +107,12 @@ export type Engineer = {
   /** When a backup file was last saved (ms), or null if never. */
   lastBackupAt: number | null;
 };
+
+/** The parts of your details printed on a record. */
+export type EngineerDetails = Pick<
+  Engineer,
+  'name' | 'companyName' | 'address' | 'phone' | 'email' | 'gasSafeNumber' | 'licenceNumber'
+>;
 
 export type AppData = {
   version: 1;

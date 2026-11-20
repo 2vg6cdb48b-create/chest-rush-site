@@ -1,4 +1,4 @@
-import type { Address, AppData, Appliance, Engineer, GasRecord, Signature } from './types';
+import type { Address, AppData, Appliance, Engineer, EngineerDetails, GasRecord, Signature } from './types';
 
 export function newId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -165,6 +165,7 @@ export function newRecord(number: string): GasRecord {
     installationClassification: 'none',
     notes: '',
     engineerSignature: null,
+    engineerDetails: null,
     receivedByName: '',
     receivedByRole: '',
     receivedBySignature: null,
@@ -199,6 +200,19 @@ export function renewalOf(old: GasRecord, number: string): GasRecord {
       inspected: a.inspected,
       flueType: a.flueType,
     })),
+  };
+}
+
+/** Your details to print on a record. */
+export function engineerDetailsOf(e: Engineer): EngineerDetails {
+  return {
+    name: e.name,
+    companyName: e.companyName,
+    address: { ...e.address },
+    phone: e.phone,
+    email: e.email,
+    gasSafeNumber: e.gasSafeNumber,
+    licenceNumber: e.licenceNumber,
   };
 }
 
@@ -355,6 +369,10 @@ export function parseAppData(raw: unknown): AppData {
           ? r.appliances.map((a) => ({ ...newAppliance(), ...a, id: text(a?.id) || newId() }))
           : [],
         engineerSignature: signature(r.engineerSignature),
+        engineerDetails:
+          r.engineerDetails && typeof r.engineerDetails === 'object'
+            ? { ...r.engineerDetails, address: address(r.engineerDetails.address) }
+            : null,
         receivedBySignature: signature(r.receivedBySignature),
       } as GasRecord;
     });
