@@ -10,7 +10,8 @@ import {
   recordNumber,
   renewalOf,
 } from './records';
-import type { AppData, Engineer, GasRecord } from './types';
+import { invoiceFromRecord, invoiceNumber, newInvoice } from './invoices';
+import type { AppData, Engineer, GasRecord, Invoice } from './types';
 
 const STORAGE_KEY = 'gas-safety-records/data/v1';
 
@@ -35,6 +36,17 @@ type StoreValue = {
   /** Notes that the landlord has been emailed about the next check. */
   markReminded: (id: string) => void;
   addExample: () => string;
+  invoices: Invoice[];
+  getInvoice: (id: string) => Invoice | undefined;
+  /** Creates a draft invoice with the next number and returns its id. */
+  createInvoice: () => string;
+  /** Creates an invoice for a gas safety record, filled in from it, and returns its id. */
+  invoiceRecord: (recordId: string) => string | null;
+  updateInvoice: (id: string, change: (i: Invoice) => Invoice) => void;
+  /** Marks an invoice as sent (if it was a draft). */
+  markInvoiceSent: (id: string) => void;
+  setInvoicePaid: (id: string, paid: boolean) => void;
+  deleteInvoice: (id: string) => void;
   replaceAll: (data: AppData) => void;
   clearAll: () => void;
 };
@@ -84,6 +96,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<StoreValue>(() => {
     const byId = new Map(data.records.map((r) => [r.id, r]));
+    const invoiceById = new Map(data.invoices.map((i) => [i.id, i]));
+
+    // Invoices are numbered in order, like records; the counter only goes up.
+    const insertInvoice = (make: (number: string) => Invoice) => {
+      const invoice = make(invoiceNumber(data.engineer));
+      setData((d) => ({
+        ...d,
+        engineer: { ...d.engineer, nextInvoiceNumber: d.engineer.nextInvoiceNumber + 1 },
+        invoices: [{ ...invoice, number: invoiceNumber(d.engineer) }, ...d.invoices],
+      }));
+      return invoice.id;
+    };
 
     // Each new record takes the next number; the counter only goes up.
     const takeNumber = (d: AppData) => ({
@@ -162,6 +186,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       markBackedUp: () =>
         setData((d) => ({ ...d, engineer: { ...d.engineer, lastBackupAt: Date.now() } })),
       addExample: () => insert(exampleRecord),
+      invoices: data.invoices,
+      getInvoice: (id) => invoiceById.get(id),
+      createInvoice: () => insertInvoice((n) => newInvoice(n, data.engineer)),
+      invoiceRecord: (recordId) => {
+        const r = byId.get(recordId);
+        return r ? insertInvoice((n) => invoiceFromRecord(r, n, data.engineer)) : null;
+      },
+      updateInvoice: (id, change) =>
+        setData((d) => ({
+          ...d,
+          invoices: d.invoices.map((i) => (i.id === id ? { ...change(i), updatedAt: Date.now() } : i)),
+        })),
+      markInvoiceSent: (id) =>
+        setData((d) => ({
+          ...d,
+          invoices: d.invoices.map((i) =>
+            i.id === id && i.status === 'draft' ? { ...i, status: 'sent', sentAt: Date.now(), updatedAt: Date.now() } : i,
+          ),
+        })),
+      setInvoicePaid: (id, paid) =>
+        setData((d) => ({
+          ...d,
+          invoices: d.invoices.map((i) =>
+            i.id === id
+              ? {
+                  ...i,
+                  status: paid ? 'paid' : 'sent',
+                  paidAt: paid ? Date.now() : null,
+                  sentAt: i.sentAt ?? Date.now(),
+                  updatedAt: Date.now(),
+                }
+              : i,
+          ),
+        })),
+      deleteInvoice: (id) => setData((d) => ({ ...d, invoices: d.invoices.filter((i) => i.id !== id) })),
       replaceAll: (next) => setData(next),
       clearAll: () => setData((d) => ({ ...emptyData(), engineer: d.engineer })),
     };

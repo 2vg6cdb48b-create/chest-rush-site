@@ -4,14 +4,15 @@ import { Pressable, StyleSheet, Text, View, type PressableProps } from 'react-na
 
 import { Spacing, useTheme } from '@/constants/theme';
 import { useDueSummary } from '@/lib/due';
-
+import { useOverdueInvoices } from '@/lib/invoices-summary';
 
 import { Icon } from './icon';
 
-type TabDef = { name: string; href: '/' | '/due' | '/settings'; label: string; md: ComponentProps<typeof Icon>['md'] };
+type TabDef = { name: string; href: '/' | '/invoices' | '/due' | '/settings'; label: string; md: ComponentProps<typeof Icon>['md'] };
 
 const TABS: TabDef[] = [
   { name: 'index', href: '/', label: 'Records', md: 'description' },
+  { name: 'invoices', href: '/invoices', label: 'Invoices', md: 'receipt_long' },
   { name: 'due', href: '/due', label: 'Due', md: 'event' },
   { name: 'settings', href: '/settings', label: 'Settings', md: 'settings' },
 ];
@@ -20,13 +21,14 @@ const TABS: TabDef[] = [
 export default function AppTabs() {
   const c = useTheme();
   const { needsAttention } = useDueSummary();
+  const overdue = useOverdueInvoices();
   return (
     <Tabs style={{ flex: 1 }}>
       <TabSlot style={{ flex: 1 }} />
       <TabList style={[styles.bar, { backgroundColor: c.card, borderTopColor: c.border }]}>
         {TABS.map((t) => (
           <TabTrigger key={t.name} name={t.name} href={t.href} asChild>
-            <TabButton label={t.label} md={t.md} badge={t.name === 'due' ? needsAttention : 0} />
+            <TabButton label={t.label} md={t.md} badge={t.name === 'due' ? needsAttention : t.name === 'invoices' ? overdue : 0} />
           </TabTrigger>
         ))}
       </TabList>

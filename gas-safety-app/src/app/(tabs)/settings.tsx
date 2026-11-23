@@ -10,6 +10,7 @@ import { SignatureField } from '@/components/signature';
 import { PRIVACY_URL, SUPPORT_URL } from '@/constants/links';
 import { MaxContentWidth, Spacing, useTheme } from '@/constants/theme';
 import { pickTextFile, shareTextFile } from '@/lib/files';
+import { VAT_OPTIONS, invoiceNumber } from '@/lib/invoices';
 import { parseAppData, recordNumber, todayIso } from '@/lib/records';
 import { REMINDER_DAYS, remindersAllowed, remindersSupported } from '@/lib/reminders';
 import { useStore } from '@/lib/store';
@@ -44,13 +45,13 @@ export default function SettingsScreen() {
       const data = parseAppData(JSON.parse(text));
       const ok = await confirm(
         'Restore backup?',
-        `This replaces everything in the app, including your details, with the ${data.records.length} record${data.records.length === 1 ? '' : 's'} in the backup.`,
+        `This replaces everything in the app, including your details, with the ${data.records.length} record${data.records.length === 1 ? '' : 's'} and ${data.invoices.length} invoice${data.invoices.length === 1 ? '' : 's'} in the backup.`,
         'Restore',
         true,
       );
       if (!ok) return;
       store.replaceAll(data);
-      notify('Backup restored', `${data.records.length} records loaded.`);
+      notify('Backup restored', `${data.records.length} records and ${data.invoices.length} invoices loaded.`);
     } catch (err) {
       notify(
         'Could not restore',
@@ -61,8 +62,8 @@ export default function SettingsScreen() {
 
   const deleteAll = async () => {
     const ok = await confirm(
-      'Delete all records?',
-      'Every record will be removed from this device. Your own details stay. Gas Safe Register asks registered businesses to keep work records for at least six years, so back up first.',
+      'Delete all records and invoices?',
+      'Every record and invoice will be removed from this device. Your own details stay. Gas Safe Register asks registered businesses to keep work records for at least six years, and HMRC asks you to keep invoices too, so back up first.',
       'Delete all',
       true,
     );
@@ -77,7 +78,7 @@ export default function SettingsScreen() {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.content}>
-        <SectionLabel>Your details (printed on every record)</SectionLabel>
+        <SectionLabel>Your details (printed on every record and invoice)</SectionLabel>
         <Card style={formStyles.group}>
           <TextField label="Engineer name" value={e.name} onChange={set('name')} autoCapitalize="words" textContentType="name" />
           <TextField
@@ -185,6 +186,76 @@ export default function SettingsScreen() {
           </Field>
         </Card>
 
+        <SectionLabel>Invoices</SectionLabel>
+        <Card style={formStyles.group}>
+          <Field label="VAT on new invoices">
+            <Choice options={VAT_OPTIONS} value={e.defaultVatRate} onChange={set('defaultVatRate')} />
+          </Field>
+          <TextField
+            label={e.defaultVatRate === 'none' ? 'VAT registration number (if registered)' : 'VAT registration number'}
+            value={e.vatNumber}
+            onChange={set('vatNumber')}
+            autoCapitalize="characters"
+            hint="Printed on invoices that charge VAT. You can still pick No VAT or a rate on each invoice."
+          />
+          <TextField
+            label="Your price for a gas safety record (£)"
+            value={e.gasSafetyPrice}
+            onChange={(v) => set('gasSafetyPrice')(v.replace(',', '.').replace(/[^0-9.]/g, ''))}
+            keyboardType="decimal-pad"
+            placeholder="e.g. 70"
+            hint="Filled in when you invoice a finished record."
+          />
+          <Field label="Days to pay" hint="Payment due date on new invoices.">
+            <Input
+              value={String(e.paymentDays)}
+              keyboardType="number-pad"
+              onChangeText={(t) => {
+                const n = parseInt(t.replace(/\D/g, ''), 10);
+                set('paymentDays')(Number.isFinite(n) ? Math.min(365, n) : 0);
+              }}
+            />
+          </Field>
+          <Text style={[styles.subhead, { color: c.text }]}>Bank details (printed under “How to pay”)</Text>
+          <TextField label="Account name" value={e.bankAccountName} onChange={set('bankAccountName')} autoCapitalize="words" />
+          <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <TextField label="Sort code" value={e.bankSortCode} onChange={set('bankSortCode')} keyboardType="numbers-and-punctuation" placeholder="00-00-00" />
+            </View>
+            <View style={{ flex: 1.3 }}>
+              <TextField label="Account number" value={e.bankAccountNumber} onChange={set('bankAccountNumber')} keyboardType="number-pad" />
+            </View>
+          </View>
+          <TextField
+            label="Note on new invoices (optional)"
+            value={e.invoiceNote}
+            onChange={set('invoiceNote')}
+            multiline
+            placeholder="e.g. Payment within 14 days, please."
+            style={{ minHeight: 60, textAlignVertical: 'top' }}
+          />
+          <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <Field label="Invoice prefix">
+                <Input value={e.invoicePrefix} onChangeText={set('invoicePrefix')} autoCapitalize="characters" />
+              </Field>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field label="Next number">
+                <Input
+                  value={String(e.nextInvoiceNumber)}
+                  keyboardType="number-pad"
+                  onChangeText={(t) => {
+                    const n = parseInt(t.replace(/\D/g, ''), 10);
+                    set('nextInvoiceNumber')(Number.isFinite(n) && n > 0 ? n : 1);
+                  }}
+                />
+              </Field>
+            </View>
+          </View>
+          <Text style={{ color: c.textSecondary, fontSize: 13, marginTop: -Spacing.sm }}>The next invoice will be {invoiceNumber(e)}.</Text>
+        </Card>
+
         <SectionLabel>Backup</SectionLabel>
         {Platform.OS === 'web' && (
           <View style={[styles.webNote, { backgroundColor: c.lowSoft }]}>
@@ -212,7 +283,7 @@ export default function SettingsScreen() {
             detail="Load a backup file, e.g. on a new phone"
             onPress={restore}
           />
-          <Row icon={{ ios: 'trash', md: 'delete' }} title="Delete all records" danger onPress={deleteAll} last />
+          <Row icon={{ ios: 'trash', md: 'delete' }} title="Delete all records and invoices" danger onPress={deleteAll} last />
         </Card>
 
         <SectionLabel>About</SectionLabel>
@@ -278,5 +349,6 @@ const styles = StyleSheet.create({
   list: { paddingVertical: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: 14 },
   webNote: { borderRadius: 12, padding: 14, marginBottom: 8 },
+  subhead: { fontSize: 16, fontWeight: '700', marginTop: Spacing.xs },
   footer: { fontSize: 13, textAlign: 'center', lineHeight: 19, marginTop: Spacing.xl },
 });

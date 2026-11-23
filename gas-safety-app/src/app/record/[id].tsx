@@ -18,6 +18,7 @@ import {
 import { Icon } from '@/components/icon';
 import { SignatureField } from '@/components/signature';
 import { MaxContentWidth, Radius, Spacing, useTheme } from '@/constants/theme';
+import { STATE_LABEL, invoiceState, invoiceTotals, money, stateColor } from '@/lib/invoices';
 import { recordHtml } from '@/lib/record-html';
 import {
   applianceHasFault,
@@ -194,6 +195,12 @@ export default function RecordScreen() {
     openAppliance(a.id);
   };
 
+  const invoice = store.invoices.find((i) => i.recordId === r.id);
+  const makeInvoice = () => {
+    const invoiceId = store.invoiceRecord(r.id);
+    if (invoiceId) router.push({ pathname: '/invoice/[id]', params: { id: invoiceId } });
+  };
+
   const todo = sections.length - doneCount;
   const cta = issued
     ? { label: sharing ? 'Creating PDF…' : 'Share PDF', onPress: () => share() }
@@ -306,6 +313,42 @@ export default function RecordScreen() {
           </View>
 
           <View style={[styles.inner, styles.list]}>
+            {issued &&
+              (invoice ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push({ pathname: '/invoice/[id]', params: { id: invoice.id } })}
+                  style={({ pressed }) => [styles.invoiceLink, { backgroundColor: c.card, borderColor: c.border, opacity: pressed ? 0.7 : 1 }]}>
+                  <View style={[styles.sectionIcon, { backgroundColor: c.primarySoft }]}>
+                    <Icon ios="sterlingsign.circle" md="receipt_long" size={20} color={c.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.sectionTitle, { color: c.text }]}>Invoice {invoice.number}</Text>
+                    <Text style={[styles.sectionSummary, { color: c.textSecondary }]}>{money(invoiceTotals(invoice).total)}</Text>
+                  </View>
+                  <View style={[styles.pill, { backgroundColor: c.background }]}>
+                    <Text style={[styles.pillText, { color: stateColor(c, invoiceState(invoice)) }]}>
+                      {STATE_LABEL[invoiceState(invoice)]}
+                    </Text>
+                  </View>
+                  <Icon ios="chevron.right" md="chevron_right" size={14} color={c.textSecondary} />
+                </Pressable>
+              ) : (
+                <View style={[styles.invoiceCard, { backgroundColor: c.primarySoft, borderColor: c.brand }]}>
+                  <View style={styles.invoiceHead}>
+                    <View style={[styles.sectionIcon, { backgroundColor: c.card }]}>
+                      <Icon ios="sterlingsign.circle" md="receipt_long" size={20} color={c.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sectionTitle, { color: c.text }]}>Invoice this job</Text>
+                      <Text style={[styles.sectionSummary, { color: c.textSecondary }]}>
+                        The customer, address and gas safety record are filled in for you
+                      </Text>
+                    </View>
+                  </View>
+                  <Button label="Create invoice" icon={{ ios: 'plus', md: 'add' }} onPress={makeInvoice} />
+                </View>
+              ))}
             {section(
               'date',
               <View style={formStyles.group}>
@@ -717,4 +760,7 @@ const styles = StyleSheet.create({
   ownerTitle: { fontSize: 16, fontWeight: '700' },
   ownerHint: { fontSize: 13.5, lineHeight: 19, marginTop: -Spacing.sm },
   missing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.lg },
+  invoiceLink: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, borderWidth: 1.5, padding: Spacing.md },
+  invoiceCard: { borderRadius: Radius.lg, borderWidth: 1.5, padding: Spacing.md, gap: Spacing.md },
+  invoiceHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
 });

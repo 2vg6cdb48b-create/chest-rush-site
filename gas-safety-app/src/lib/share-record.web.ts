@@ -3,29 +3,32 @@ import { jsPDF } from 'jspdf';
 
 import { notify } from './ui';
 
-const A4_W_MM = 297;
-const A4_H_MM = 210;
-const MARGIN_MM = 8;
-const CONTENT_W_MM = A4_W_MM - MARGIN_MM * 2;
-const CONTENT_H_MM = A4_H_MM - MARGIN_MM * 2;
-const PAGE_PX = 1123; // A4 landscape width at 96 dpi
+export type PageOrientation = 'landscape' | 'portrait';
 
-/** Lays the record out in an off-screen frame, the way it prints. */
-async function renderFrame(html: string): Promise<{ frame: HTMLIFrameElement; page: HTMLElement }> {
+type Layout = { orientation: PageOrientation; wMm: number; hMm: number; marginMm: number; pagePx: number; contentMm: number };
+
+// Records are A4 landscape with 8 mm margins; invoices are A4 portrait with 12 mm margins.
+const LAYOUTS: Record<PageOrientation, Layout> = {
+  landscape: { orientation: 'landscape', wMm: 297, hMm: 210, marginMm: 8, pagePx: 1123, contentMm: 281 },
+  portrait: { orientation: 'portrait', wMm: 210, hMm: 297, marginMm: 12, pagePx: 794, contentMm: 186 },
+};
+
+/** Lays the page out in an off-screen frame, the way it prints. */
+async function renderFrame(html: string, L: Layout): Promise<{ frame: HTMLIFrameElement; page: HTMLElement }> {
   const frame = document.createElement('iframe');
   frame.setAttribute('aria-hidden', 'true');
   Object.assign(frame.style, {
     position: 'fixed',
     left: '-10000px',
     top: '0',
-    width: `${PAGE_PX}px`,
+    width: `${L.pagePx}px`,
     height: '800px',
     border: '0',
   });
   document.body.appendChild(frame);
   const printLike =
     '<style>body{background:#fff!important;padding:0!important;margin:0!important}' +
-    '.page{box-shadow:none!important;padding:0!important;width:281mm!important;margin:0!important}</style>';
+    `.page{box-shadow:none!important;padding:0!important;width:${L.contentMm}mm!important;min-height:0!important;margin:0!important}</style>`;
   const doc = frame.contentDocument!;
   doc.open();
   doc.write(html.replace('</head>', `${printLike}</head>`));
@@ -35,18 +38,21 @@ async function renderFrame(html: string): Promise<{ frame: HTMLIFrameElement; pa
   return { frame, page: (doc.querySelector('.page') as HTMLElement | null) ?? doc.body };
 }
 
-/** Turns the record's HTML into an A4 landscape PDF. */
-async function htmlToPdf(html: string): Promise<Blob> {
-  const { frame, page: content } = await renderFrame(html);
+/** Turns the page's HTML into an A4 PDF. */
+async function htmlToPdf(html: string, L: Layout): Promise<Blob> {
+  const MARGIN_MM = L.marginMm;
+  const CONTENT_W_MM = L.wMm - MARGIN_MM * 2;
+  const CONTENT_H_MM = L.hMm - MARGIN_MM * 2;
+  const { frame, page: content } = await renderFrame(html, L);
   try {
     const canvas = await html2canvas(content, {
       scale: 2.5,
       backgroundColor: '#ffffff',
-      windowWidth: PAGE_PX,
+      windowWidth: L.pagePx,
       useCORS: true,
       logging: false,
     });
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
+    const pdf = new jsPDF({ orientation: L.orientation, unit: 'mm', format: 'a4', compress: true });
     const pxPerMm = canvas.width / CONTENT_W_MM;
     const contentHeightMm = canvas.height / pxPerMm;
     const jpeg = (c: HTMLCanvasElement) => c.toDataURL('image/jpeg', 0.92);
@@ -67,7 +73,7 @@ async function htmlToPdf(html: string): Promise<Blob> {
       slice.width = canvas.width;
       slice.height = sliceH;
       slice.getContext('2d')!.drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-      if (page > 0) pdf.addPage('a4', 'landscape');
+      if (page > 0) pdf.addPage('a4', L.orientation);
       pdf.addImage(jpeg(slice), 'JPEG', MARGIN_MM, MARGIN_MM, CONTENT_W_MM, sliceH / pxPerMm);
     }
     return pdf.output('blob');
@@ -129,11 +135,11 @@ function download(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-/** Makes a real PDF of the record and opens the share sheet (email, WhatsApp, Files…). */
-export async function shareRecordPdf(html: string, filename: string) {
+/** Makes a real PDF of the page and opens the share sheet (email, WhatsApp, Files…). */
+export async function shareRecordPdf(html: string, filename: string, orientation: PageOrientation = 'landscape') {
   let blob: Blob;
   try {
-    blob = await htmlToPdf(html);
+    blob = await htmlToPdf(html, LAYOUTS[orientation]);
   } catch (e) {
     notify('Could not create the PDF', e instanceof Error ? e.message : String(e));
     return;

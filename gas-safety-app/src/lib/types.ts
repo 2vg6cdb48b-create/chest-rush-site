@@ -121,6 +121,63 @@ export type Engineer = {
   remindersOn: boolean;
   /** Light or dark look; 'system' follows the phone. */
   appearance: 'system' | 'light' | 'dark';
+  invoicePrefix: string;
+  nextInvoiceNumber: number;
+  /** VAT registration number, printed on invoices that charge VAT. */
+  vatNumber: string;
+  /** VAT choice for new invoices. */
+  defaultVatRate: VatRate;
+  /** Days the customer has to pay. */
+  paymentDays: number;
+  bankAccountName: string;
+  bankSortCode: string;
+  bankAccountNumber: string;
+  /** Printed in the notes box of new invoices. */
+  invoiceNote: string;
+  /** Your usual price for a gas safety record, used when invoicing one. */
+  gasSafetyPrice: string;
+};
+
+/** 'none' means not VAT registered, so no VAT is shown or charged. */
+export type VatRate = 'none' | '20' | '5' | '0';
+
+export type InvoiceItem = {
+  id: string;
+  description: string;
+  /** Kept as text so "1." or "" can be typed. */
+  quantity: string;
+  /** Pounds, e.g. "70" or "18.50". */
+  unitPrice: string;
+};
+
+export type Invoice = {
+  id: string;
+  /** Your own invoice number, e.g. "INV-0024". */
+  number: string;
+  status: 'draft' | 'sent' | 'paid';
+  customerName: string;
+  customerAddress: Address;
+  customerEmail: string;
+  customerPhone: string;
+  /** Where the work was done, if different from the customer's address (optional). */
+  jobAddress: Address;
+  /** The customer's order or PO number, or your own reference (optional). */
+  reference: string;
+  /** The gas safety record this invoice was made from, if any. */
+  recordId: string | null;
+  /** Dates are stored as YYYY-MM-DD. */
+  invoiceDate: string;
+  workDate: string;
+  dueDate: string;
+  items: InvoiceItem[];
+  /** Percentage off the subtotal, e.g. "10". Empty or "0" means no discount. */
+  discountPercent: string;
+  vatRate: VatRate;
+  notes: string;
+  sentAt: number | null;
+  paidAt: number | null;
+  createdAt: number;
+  updatedAt: number;
 };
 
 /** The parts of your details printed on a record. */
@@ -133,4 +190,5 @@ export type AppData = {
   version: 1;
   engineer: Engineer;
   records: GasRecord[];
+  invoices: Invoice[];
 };

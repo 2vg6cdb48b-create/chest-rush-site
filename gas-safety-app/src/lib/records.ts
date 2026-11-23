@@ -1,4 +1,4 @@
-import type { Address, AppData, Appliance, Engineer, EngineerDetails, GasRecord, Signature } from './types';
+import type { Address, AppData, Appliance, Engineer, EngineerDetails, GasRecord, Invoice, Signature, VatRate } from './types';
 
 export function newId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -21,11 +21,21 @@ export function emptyEngineer(): Engineer {
     lastBackupAt: null,
     remindersOn: true,
     appearance: 'system',
+    invoicePrefix: 'INV-',
+    nextInvoiceNumber: 1,
+    vatNumber: '',
+    defaultVatRate: 'none',
+    paymentDays: 14,
+    bankAccountName: '',
+    bankSortCode: '',
+    bankAccountNumber: '',
+    invoiceNote: '',
+    gasSafetyPrice: '',
   };
 }
 
 export function emptyData(): AppData {
-  return { version: 1, engineer: emptyEngineer(), records: [] };
+  return { version: 1, engineer: emptyEngineer(), records: [], invoices: [] };
 }
 
 // ---------- Dates (stored as YYYY-MM-DD, shown as DD/MM/YYYY) ----------
@@ -369,6 +379,10 @@ export function parseAppData(raw: unknown): AppData {
     remindersOn: e.remindersOn !== false,
     appearance: e.appearance === 'light' || e.appearance === 'dark' ? e.appearance : 'system',
     recordPrefix: typeof e.recordPrefix === 'string' ? e.recordPrefix : 'LGSR-',
+    invoicePrefix: typeof e.invoicePrefix === 'string' ? e.invoicePrefix : 'INV-',
+    nextInvoiceNumber: Math.max(1, Number(e.nextInvoiceNumber) || 1),
+    defaultVatRate: isVatRate(e.defaultVatRate) ? e.defaultVatRate : 'none',
+    paymentDays: Number.isFinite(Number(e.paymentDays)) ? Math.min(365, Math.max(0, Math.round(Number(e.paymentDays)))) : 14,
   };
   const records = src.records
     .filter((r) => r && typeof r === 'object')
@@ -400,7 +414,48 @@ export function parseAppData(raw: unknown): AppData {
         receivedBySignature: signature(r.receivedBySignature),
       } as GasRecord;
     });
-  return { version: 1, engineer, records };
+  const invoices = Array.isArray((src as { invoices?: unknown }).invoices)
+    ? ((src as { invoices: unknown[] }).invoices.filter((i) => i && typeof i === 'object') as Partial<Invoice>[]).map(
+        (i) => {
+          return {
+            ...i,
+            number: text(i.number),
+            customerName: text(i.customerName),
+            customerEmail: text(i.customerEmail),
+            customerPhone: text(i.customerPhone),
+            reference: text(i.reference),
+            invoiceDate: text(i.invoiceDate),
+            workDate: text(i.workDate),
+            dueDate: text(i.dueDate),
+            notes: text(i.notes),
+            createdAt: Number(i.createdAt) || Date.now(),
+            updatedAt: Number(i.updatedAt) || Date.now(),
+            id: text(i.id) || newId(),
+            status: i.status === 'sent' || i.status === 'paid' ? i.status : 'draft',
+            customerAddress: address(i.customerAddress),
+            jobAddress: address(i.jobAddress),
+            recordId: typeof i.recordId === 'string' ? i.recordId : null,
+            items: Array.isArray(i.items)
+              ? i.items.map((it) => ({
+                  id: text(it?.id) || newId(),
+                  description: text(it?.description),
+                  quantity: text(it?.quantity),
+                  unitPrice: text(it?.unitPrice),
+                }))
+              : [],
+            discountPercent: text(i.discountPercent),
+            vatRate: isVatRate(i.vatRate) ? i.vatRate : 'none',
+            sentAt: typeof i.sentAt === 'number' ? i.sentAt : null,
+            paidAt: typeof i.paidAt === 'number' ? i.paidAt : null,
+          } as Invoice;
+        },
+      )
+    : [];
+  return { version: 1, engineer, records, invoices };
+}
+
+function isVatRate(v: unknown): v is VatRate {
+  return v === 'none' || v === '20' || v === '5' || v === '0';
 }
 
 /** An example record to try the app with. Clearly marked as an example. */
