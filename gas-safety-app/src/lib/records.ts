@@ -161,6 +161,8 @@ export function newRecord(number: string): GasRecord {
     landlordAddress: emptyAddress(),
     landlordPhone: '',
     landlordEmail: '',
+    ownerName: '',
+    ownerAddress: emptyAddress(),
     appliances: [],
     tightnessTest: '',
     ecvAccessible: '',
@@ -197,6 +199,8 @@ export function renewalOf(old: GasRecord, number: string): GasRecord {
     landlordAddress: { ...old.landlordAddress },
     landlordPhone: old.landlordPhone,
     landlordEmail: old.landlordEmail,
+    ownerName: old.ownerName,
+    ownerAddress: { ...old.ownerAddress },
     appliances: old.appliances.map((a) => ({
       ...newAppliance(),
       location: a.location,
@@ -376,6 +380,8 @@ export function parseAppData(raw: unknown): AppData {
         id: text(r.id) || newId(),
         property: address(r.property),
         landlordAddress: address(r.landlordAddress),
+        ownerName: text(r.ownerName),
+        ownerAddress: address(r.ownerAddress),
         appliances: Array.isArray(r.appliances)
           ? r.appliances.map((a) => {
               const appliance: Appliance = { ...newAppliance(), ...a, id: text(a?.id) || newId() };
