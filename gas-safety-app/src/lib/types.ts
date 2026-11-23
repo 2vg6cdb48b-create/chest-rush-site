@@ -136,6 +136,8 @@ export type Engineer = {
   invoiceNote: string;
   /** Your usual price for a gas safety record, used when invoicing one. */
   gasSafetyPrice: string;
+  /** 'custom' is the branded navy and orange layout; 'classic' is a plain black and white document. */
+  invoiceStyle: 'custom' | 'classic';
 };
 
 /** 'none' means not VAT registered, so no VAT is shown or charged. */

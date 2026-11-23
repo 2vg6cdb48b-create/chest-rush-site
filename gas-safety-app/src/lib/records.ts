@@ -31,6 +31,7 @@ export function emptyEngineer(): Engineer {
     bankAccountNumber: '',
     invoiceNote: '',
     gasSafetyPrice: '',
+    invoiceStyle: 'custom',
   };
 }
 
@@ -382,6 +383,7 @@ export function parseAppData(raw: unknown): AppData {
     invoicePrefix: typeof e.invoicePrefix === 'string' ? e.invoicePrefix : 'INV-',
     nextInvoiceNumber: Math.max(1, Number(e.nextInvoiceNumber) || 1),
     defaultVatRate: isVatRate(e.defaultVatRate) ? e.defaultVatRate : 'none',
+    invoiceStyle: e.invoiceStyle === 'classic' ? 'classic' : 'custom',
     paymentDays: Number.isFinite(Number(e.paymentDays)) ? Math.min(365, Math.max(0, Math.round(Number(e.paymentDays)))) : 14,
   };
   const records = src.records
