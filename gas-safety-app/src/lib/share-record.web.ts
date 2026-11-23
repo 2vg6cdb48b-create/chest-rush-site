@@ -48,8 +48,19 @@ async function htmlToPdf(html: string): Promise<Blob> {
     });
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
     const pxPerMm = canvas.width / CONTENT_W_MM;
+    const contentHeightMm = canvas.height / pxPerMm;
+    const jpeg = (c: HTMLCanvasElement) => c.toDataURL('image/jpeg', 0.92);
+
+    if (contentHeightMm <= CONTENT_H_MM * 1.4) {
+      // Normal records: always one page. A slightly tall one is shrunk to fit and centred.
+      const scale = Math.min(1, CONTENT_H_MM / contentHeightMm);
+      const w = CONTENT_W_MM * scale;
+      pdf.addImage(jpeg(canvas), 'JPEG', MARGIN_MM + (CONTENT_W_MM - w) / 2, MARGIN_MM, w, contentHeightMm * scale);
+      return pdf.output('blob');
+    }
+
+    // Very long records (many appliances): one A4 page per slice.
     const pageHeightPx = Math.floor(CONTENT_H_MM * pxPerMm);
-    // One A4 page per slice, for records with many appliances (ignoring a sliver of leftover).
     for (let y = 0, page = 0; y < canvas.height - 2 * pxPerMm; y += pageHeightPx, page++) {
       const sliceH = Math.min(pageHeightPx, canvas.height - y);
       const slice = document.createElement('canvas');
@@ -57,7 +68,7 @@ async function htmlToPdf(html: string): Promise<Blob> {
       slice.height = sliceH;
       slice.getContext('2d')!.drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
       if (page > 0) pdf.addPage('a4', 'landscape');
-      pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', MARGIN_MM, MARGIN_MM, CONTENT_W_MM, sliceH / pxPerMm);
+      pdf.addImage(jpeg(slice), 'JPEG', MARGIN_MM, MARGIN_MM, CONTENT_W_MM, sliceH / pxPerMm);
     }
     return pdf.output('blob');
   } finally {
