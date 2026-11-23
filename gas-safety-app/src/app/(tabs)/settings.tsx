@@ -115,6 +115,22 @@ export default function SettingsScreen() {
           <SignatureField value={e.signature} onChange={set('signature')} />
         </Card>
 
+        <SectionLabel>Appearance</SectionLabel>
+        <Card style={formStyles.group}>
+          <Choice
+            options={[
+              { value: 'system', label: 'Automatic' },
+              { value: 'light', label: 'Light' },
+              { value: 'dark', label: 'Dark' },
+            ]}
+            value={e.appearance}
+            onChange={set('appearance')}
+          />
+          <Text style={{ color: c.textSecondary, fontSize: 14, lineHeight: 20 }}>
+            Automatic follows your phone: light in the day, dark navy when your phone is in dark mode.
+          </Text>
+        </Card>
+
         <SectionLabel>Due-date reminders</SectionLabel>
         <Card style={formStyles.group}>
           {remindersSupported ? (

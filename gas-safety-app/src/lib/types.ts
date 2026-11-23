@@ -110,6 +110,8 @@ export type Engineer = {
   lastBackupAt: number | null;
   /** Phone alerts 30 and 7 days before each property's next check is due. */
   remindersOn: boolean;
+  /** Light or dark look; 'system' follows the phone. */
+  appearance: 'system' | 'light' | 'dark';
 };
 
 /** The parts of your details printed on a record. */

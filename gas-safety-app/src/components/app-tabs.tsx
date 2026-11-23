@@ -8,7 +8,11 @@ export default function AppTabs() {
   const { needsAttention } = useDueSummary();
 
   return (
-    <NativeTabs tintColor={c.primary}>
+    <NativeTabs
+      tintColor={c.primary}
+      backgroundColor={c.card}
+      labelStyle={{ default: { color: c.textSecondary }, selected: { color: c.primary } }}
+      iconColor={{ default: c.textSecondary, selected: c.primary }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Records</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'doc.text', selected: 'doc.text.fill' }} md="description" />
