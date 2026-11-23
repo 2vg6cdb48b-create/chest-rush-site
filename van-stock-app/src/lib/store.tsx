@@ -53,18 +53,28 @@ export function StockProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<StockData>(emptyData);
   const [loaded, setLoaded] = useState(false);
 
+  // Set when the saved data couldn't be read, so an empty app never saves over it.
+  const [readFailed, setReadFailed] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
+    // In a browser, ask for this site's storage to be kept rather than cleared when space is short.
+    (globalThis as any).navigator?.storage?.persist?.().catch?.(() => {});
     AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => {
+      .then(async (raw) => {
         if (cancelled || !raw) return;
         try {
           setData(parseStockData(JSON.parse(raw)));
         } catch (error) {
+          // Keep a copy of whatever was there before anything new is saved.
           console.warn('Could not read saved stock', error);
+          await AsyncStorage.setItem(`${STORAGE_KEY}/unreadable-${Date.now()}`, raw).catch(() => {});
         }
       })
-      .catch((error) => console.warn('Could not load saved stock', error))
+      .catch((error) => {
+        console.warn('Could not load saved stock', error);
+        if (!cancelled) setReadFailed(true);
+      })
       .finally(() => {
         if (!cancelled) setLoaded(true);
       });
@@ -74,11 +84,11 @@ export function StockProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || readFailed) return;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).catch((error) =>
       console.warn('Could not save stock', error),
     );
-  }, [data, loaded]);
+  }, [data, loaded, readFailed]);
 
   const addItem = useCallback((fields: ItemFields) => {
     const now = Date.now();

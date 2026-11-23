@@ -1,8 +1,10 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Badge, Button, Card, Choice, SectionLabel } from '@/components/controls';
+import { ApplianceIcon } from '@/components/appliance-icon';
+import { Button, Choice } from '@/components/controls';
 import {
   AddressFields,
   CheckRow,
@@ -20,19 +22,22 @@ import { recordHtml } from '@/lib/record-html';
 import {
   applianceHasFault,
   applianceProblems,
-  applianceTitle,
+  coRatio,
   engineerDetailsOf,
+  formatAddress,
   formatLongDate,
   installationHasFault,
   issueProblems,
   newAppliance,
   nextDueDate,
   recordHasFault,
+  sectionStatus,
+  type SectionKey,
 } from '@/lib/records';
 import { remindersAllowed, remindersSupported } from '@/lib/reminders';
 import { shareRecordPdf } from '@/lib/share-record';
 import { useStore } from '@/lib/store';
-import type { Classification, GasRecord } from '@/lib/types';
+import type { Appliance, Classification, GasRecord } from '@/lib/types';
 import { confirm, notify, success } from '@/lib/ui';
 
 const CLASSIFICATIONS: { value: Classification; label: string }[] = [
@@ -41,18 +46,48 @@ const CLASSIFICATIONS: { value: Classification; label: string }[] = [
   { value: 'ID', label: 'Imm. Dangerous' },
 ];
 
+type IconPair = { ios: Parameters<typeof Icon>[0]['ios']; md: Parameters<typeof Icon>[0]['md'] };
+
+const SECTIONS: Record<SectionKey | 'notes', { title: string; icon: IconPair }> = {
+  date: { title: 'Check date', icon: { ios: 'calendar', md: 'event' } },
+  property: { title: 'Property', icon: { ios: 'house', md: 'home' } },
+  landlord: { title: 'Landlord / agent', icon: { ios: 'person', md: 'person' } },
+  appliances: { title: 'Appliances', icon: { ios: 'flame', md: 'local_fire_department' } },
+  installation: { title: 'Installation checks', icon: { ios: 'gauge.with.dots.needle.33percent', md: 'speed' } },
+  notes: { title: 'Notes', icon: { ios: 'note.text', md: 'notes' } },
+  signatures: { title: 'Signatures', icon: { ios: 'signature', md: 'draw' } },
+};
+
 function pdfName(r: GasRecord) {
   const where = [r.property.line1, r.property.postcode].filter(Boolean).join(' ');
   return `Gas Safety Record ${r.number}${where ? ` - ${where}` : ''}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
 }
 
+function readings(a: Appliance) {
+  const ratio = coRatio(a.coPpm, a.co2Percent);
+  return [
+    a.operatingPressure && `${a.operatingPressure} mbar`,
+    a.heatInput && `${a.heatInput} kW`,
+    ratio && `ratio ${ratio}`,
+    a.flueType === 'FL' && 'flueless',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 export default function RecordScreen() {
   const c = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const store = useStore();
   const record = store.getRecord(id);
   const [showProblems, setShowProblems] = useState(false);
   const [sharing, setSharing] = useState(false);
+  // Open the first part still to do; finished parts start folded away.
+  const [open, setOpen] = useState<Set<string>>(() => {
+    const first = record ? sectionStatus(record).find((s) => !s.done) : undefined;
+    return new Set(first ? [first.key] : []);
+  });
 
   const previousLandlords = useMemo(() => {
     const seen = new Map<string, GasRecord>();
@@ -81,6 +116,16 @@ export default function RecordScreen() {
   const problems = issueProblems(r, engineer);
   const issued = r.status === 'issued';
   const who = r.landlordIsAgent ? 'Agent' : 'Landlord';
+  const sections = sectionStatus(r);
+  const doneCount = sections.filter((s) => s.done).length;
+  const isDone = (k: SectionKey) => sections.find((s) => s.key === k)!.done;
+  const toggle = (k: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
 
   // `asIssued` lets the PDF made straight after issuing show as issued, before the screen updates.
   const share = async (asIssued = false) => {
@@ -100,6 +145,8 @@ export default function RecordScreen() {
   const issue = async () => {
     if (problems.length) {
       setShowProblems(true);
+      const firstTodo = sections.find((s) => !s.done);
+      if (firstTodo) setOpen((prev) => new Set(prev).add(firstTodo.key));
       return;
     }
     const ok = await confirm(
@@ -140,17 +187,65 @@ export default function RecordScreen() {
     router.back();
   };
 
+  const openAppliance = (applianceId: string) =>
+    router.push({ pathname: '/appliance/[recordId]/[applianceId]', params: { recordId: r.id, applianceId } });
   const addAppliance = () => {
     const a = newAppliance();
     store.updateRecord(r.id, (cur) => ({ ...cur, appliances: [...cur.appliances, a] }));
-    router.push({ pathname: '/appliance/[recordId]/[applianceId]', params: { recordId: r.id, applianceId: a.id } });
+    openAppliance(a.id);
   };
+
+  const todo = sections.length - doneCount;
+  const cta = issued
+    ? { label: sharing ? 'Creating PDF…' : 'Share PDF', onPress: () => share() }
+    : todo > 0 || problems.length
+      ? { label: todo > 0 ? `Finish ${todo} section${todo === 1 ? '' : 's'} to issue` : 'Check what’s missing', onPress: issue }
+      : { label: 'Issue record', onPress: issue };
+
+  const summaries: Record<SectionKey | 'notes', string> = {
+    date: r.checkDate ? `${formatLongDate(r.checkDate)} · next due ${formatLongDate(r.nextDueDate)}` : 'Not set',
+    property: formatAddress(r.property) || 'Address and postcode',
+    landlord: r.landlordName.trim() || `${who} name and address`,
+    appliances: r.appliances.length
+      ? `${r.appliances.length} appliance${r.appliances.length === 1 ? '' : 's'}${r.appliances.some(applianceHasFault) ? ' · defects recorded' : ''}`
+      : 'Add each appliance you check',
+    installation: isDone('installation')
+      ? installationHasFault(r)
+        ? 'Defect recorded'
+        : 'All satisfactory'
+      : 'Tightness test, ECV, bonding, pipework',
+    notes: r.notes.trim() || 'Optional',
+    signatures: r.engineerSignature
+      ? r.receivedBySignature
+        ? 'Signed by you and ' + (r.receivedByName.trim() || 'the customer')
+        : 'Signed by you'
+      : 'Your signature',
+  };
+
+  const section = (k: SectionKey | 'notes', body: ReactNode, opts?: { optional?: boolean }) => (
+    <Section
+      key={k}
+      title={SECTIONS[k].title}
+      icon={SECTIONS[k].icon}
+      summary={summaries[k]}
+      done={k === 'notes' ? !!r.notes.trim() : isDone(k)}
+      optional={opts?.optional}
+      open={open.has(k)}
+      onToggle={() => toggle(k)}>
+      <View pointerEvents={issued ? 'none' : 'auto'} style={issued ? { opacity: 0.75 } : undefined}>
+        {body}
+      </View>
+    </Section>
+  );
 
   return (
     <>
       <Stack.Screen
         options={{
           title: r.number,
+          headerStyle: { backgroundColor: c.band },
+          headerTintColor: c.bandText,
+          headerShadowVisible: false,
           headerRight: () => (
             <Pressable
               accessibilityRole="button"
@@ -158,332 +253,445 @@ export default function RecordScreen() {
               hitSlop={10}
               onPress={() => share()}
               style={{ paddingHorizontal: Spacing.xs }}>
-              <Icon ios="square.and.arrow.up" md="share" size={22} color={c.primary} />
+              <Icon ios="square.and.arrow.up" md="share" size={22} color={c.bandText} />
             </Pressable>
           ),
         }}
       />
-      <ScrollView
-        style={{ backgroundColor: c.background }}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-        contentInsetAdjustmentBehavior="automatic">
-        <StatusCard record={r} onReopen={reopen} />
-
-        <Locked locked={issued}>
-          <SectionLabel>Check</SectionLabel>
-          <Card style={formStyles.group}>
-            <DateField label="Date of check" todayButton value={r.checkDate} onChange={(d) => setDates(d, r.previousDueDate)} />
-            <DateField
-              label="Previous record's due date (optional)"
-              value={r.previousDueDate}
-              allowEmpty
-              onChange={(d) => setDates(r.checkDate, d)}
-              hint="From last year's record. A check done up to 2 months early keeps the same anniversary date (Regulation 36A)."
-            />
-            <DateField
-              label="Next check due by"
-              value={r.nextDueDate}
-              onChange={(d) => patch({ nextDueDate: d })}
-              hint={
-                due.date && r.nextDueDate !== due.date
-                  ? `Changed by hand. Worked out from the dates above it would be ${formatLongDate(due.date)}.`
-                  : due.keptAnniversary
-                    ? 'Checked within 2 months of the previous due date, so the anniversary date is kept.'
-                    : '12 months from the date of this check.'
-              }
-            />
-          </Card>
-
-          <SectionLabel>Property checked</SectionLabel>
-          <Card style={formStyles.group}>
-            <AddressFields value={r.property} onChange={(property) => patch({ property })} />
-            <TextField label="Tenant or occupier (optional)" value={r.tenantName} onChange={(tenantName) => patch({ tenantName })} autoCapitalize="words" />
-          </Card>
-
-          <SectionLabel>{who}</SectionLabel>
-          <Card style={formStyles.group}>
-            <Choice
-              options={[
-                { value: 'landlord', label: 'Landlord' },
-                { value: 'agent', label: 'Managing agent' },
-              ]}
-              value={r.landlordIsAgent ? 'agent' : 'landlord'}
-              onChange={(v) => patch({ landlordIsAgent: v === 'agent' })}
-            />
-            <Field label={`${who} name`}>
-              <Input value={r.landlordName} onChangeText={(landlordName) => patch({ landlordName })} autoCapitalize="words" />
-              <Suggestions
-                options={previousLandlords.map((p) => p.landlordName.trim())}
-                value={r.landlordName}
-                onPick={(name) => {
-                  const from = previousLandlords.find((p) => p.landlordName.trim() === name);
-                  if (!from) return;
-                  patch({
-                    landlordName: from.landlordName,
-                    landlordIsAgent: from.landlordIsAgent,
-                    landlordAddress: { ...from.landlordAddress },
-                    landlordPhone: from.landlordPhone,
-                    landlordEmail: from.landlordEmail,
-                  });
-                }}
-              />
-            </Field>
-            <AddressFields value={r.landlordAddress} onChange={(landlordAddress) => patch({ landlordAddress })} />
-            <TextField label="Phone" value={r.landlordPhone} onChange={(landlordPhone) => patch({ landlordPhone })} keyboardType="phone-pad" />
-            <TextField
-              label="Email"
-              value={r.landlordEmail}
-              onChange={(landlordEmail) => patch({ landlordEmail })}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              hint="Used for the reminder when next year's check is due."
-            />
-          </Card>
-        </Locked>
-
-        <SectionLabel>Appliances</SectionLabel>
-        <View style={{ gap: Spacing.sm }}>
-          {r.appliances.map((a, i) => {
-            const missing = applianceProblems(a);
-            const fault = applianceHasFault(a);
-            return (
-              <Pressable
-                key={a.id}
-                accessibilityRole="button"
-                onPress={() =>
-                  router.push({ pathname: '/appliance/[recordId]/[applianceId]', params: { recordId: r.id, applianceId: a.id } })
-                }
-                style={({ pressed }) => [
-                  styles.applianceRow,
-                  { backgroundColor: c.card, borderColor: fault ? c.out : c.border, opacity: pressed ? 0.6 : 1 },
-                ]}>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={[styles.applianceTitle, { color: c.text }]}>{applianceTitle(a, i)}</Text>
-                  <View style={styles.badges}>
-                    {a.safeToUse === 'yes' && !fault && <Badge label="Safe to use" tone="good" />}
-                    {a.safeToUse === 'no' && <Badge label="Not safe to use" tone="bad" />}
-                    {a.classification !== 'none' && <Badge label={a.classification} tone="bad" />}
-                    {missing.length > 0 && <Badge label={`${missing.length} to fill in`} tone="warn" />}
-                  </View>
+      <View style={{ flex: 1, backgroundColor: c.background }}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets>
+          <View style={[styles.band, { backgroundColor: c.band }]}>
+            <View style={styles.inner}>
+              <Text style={[styles.address, { color: c.bandText }]} numberOfLines={2}>
+                {r.property.line1.trim() || 'New record'}
+              </Text>
+              <Text style={[styles.bandSub, { color: c.bandMuted }]} numberOfLines={1}>
+                {[r.property.postcode, r.landlordName, issued ? 'Issued' : 'Draft'].filter(Boolean).join(' · ')}
+              </Text>
+              {issued ? (
+                <View style={[styles.issued, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                  <Icon ios="checkmark.seal.fill" md="verified" size={22} color={c.ok} />
+                  <Text style={[styles.issuedText, { color: c.bandText }]}>
+                    Issued {r.issuedAt ? new Date(r.issuedAt).toLocaleDateString('en-GB') : ''} · next due{' '}
+                    {formatLongDate(r.nextDueDate)}
+                  </Text>
+                  <Pressable onPress={reopen} hitSlop={8}>
+                    <Text style={{ color: c.brand, fontWeight: '700', fontSize: 14 }}>Edit</Text>
+                  </Pressable>
                 </View>
-                <Icon ios="chevron.right" md="chevron_right" size={14} color={c.textSecondary} />
-              </Pressable>
-            );
-          })}
-          {!issued && (
-            <Button label="Add appliance" variant="secondary" icon={{ ios: 'plus', md: 'add' }} onPress={addAppliance} />
-          )}
-        </View>
+              ) : (
+                <>
+                  <View style={styles.progressText}>
+                    <Text style={{ color: c.bandMuted, fontSize: 13 }}>
+                      {doneCount} of {sections.length} sections done
+                    </Text>
+                    <Text style={{ color: c.bandMuted, fontSize: 13 }}>
+                      {Math.round((doneCount / sections.length) * 100)}%
+                    </Text>
+                  </View>
+                  <View style={[styles.track, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
+                    <View
+                      style={[styles.fill, { backgroundColor: c.brand, width: `${(doneCount / sections.length) * 100}%` }]}
+                    />
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
 
-        <Locked locked={issued}>
-          <SectionLabel>Installation</SectionLabel>
-          <Card style={formStyles.group}>
-            <CheckRow
-              label="Gas tightness test"
-              kind="passFail"
-              value={r.tightnessTest}
-              onChange={(tightnessTest) => patch({ tightnessTest })}
-              hint="Recommended by Gas Safe Register, though not a legal requirement."
-            />
-            <CheckRow
-              label="Emergency control valve accessible and labelled"
-              kind="yesNo"
-              value={r.ecvAccessible}
-              onChange={(ecvAccessible) => patch({ ecvAccessible })}
-            />
-            <CheckRow
-              label="Protective equipotential bonding satisfactory"
-              kind="yesNoNa"
-              value={r.bonding}
-              onChange={(bonding) => patch({ bonding })}
-            />
-            <CheckRow
-              label="Installation pipework visual inspection"
-              kind="passFail"
-              value={r.pipeworkVisual}
-              onChange={(pipeworkVisual) => patch({ pipeworkVisual })}
-            />
-            {(installationHasFault(r) || !!r.installationDefects) && (
-              <>
-                <TextField
-                  label="Installation defect"
-                  value={r.installationDefects}
-                  onChange={(installationDefects) => patch({ installationDefects })}
-                  multiline
-                  style={{ minHeight: 70, textAlignVertical: 'top' }}
+          <View style={[styles.inner, styles.list]}>
+            {section(
+              'date',
+              <View style={formStyles.group}>
+                <DateField label="Date of check" todayButton value={r.checkDate} onChange={(d) => setDates(d, r.previousDueDate)} />
+                <DateField
+                  label="Previous record's due date (optional)"
+                  value={r.previousDueDate}
+                  allowEmpty
+                  onChange={(d) => setDates(r.checkDate, d)}
+                  hint="From last year's record. A check done up to 2 months early keeps the same anniversary date (Regulation 36A)."
                 />
-                <Field label="Classification">
-                  <Choice
-                    options={CLASSIFICATIONS}
-                    value={r.installationClassification}
-                    onChange={(installationClassification) => patch({ installationClassification })}
+                <DateField
+                  label="Next check due by"
+                  value={r.nextDueDate}
+                  onChange={(d) => patch({ nextDueDate: d })}
+                  hint={
+                    due.date && r.nextDueDate !== due.date
+                      ? `Changed by hand. Worked out from the dates above it would be ${formatLongDate(due.date)}.`
+                      : due.keptAnniversary
+                        ? 'Checked within 2 months of the previous due date, so the anniversary date is kept.'
+                        : '12 months from the date of this check.'
+                  }
+                />
+              </View>,
+            )}
+
+            {section(
+              'property',
+              <View style={formStyles.group}>
+                <AddressFields value={r.property} onChange={(property) => patch({ property })} />
+                <TextField
+                  label="Tenant or occupier (optional)"
+                  value={r.tenantName}
+                  onChange={(tenantName) => patch({ tenantName })}
+                  autoCapitalize="words"
+                />
+              </View>,
+            )}
+
+            {section(
+              'landlord',
+              <View style={formStyles.group}>
+                <Choice
+                  options={[
+                    { value: 'landlord', label: 'Landlord' },
+                    { value: 'agent', label: 'Managing agent' },
+                  ]}
+                  value={r.landlordIsAgent ? 'agent' : 'landlord'}
+                  onChange={(v) => patch({ landlordIsAgent: v === 'agent' })}
+                />
+                <Field label={`${who} name`}>
+                  <Input value={r.landlordName} onChangeText={(landlordName) => patch({ landlordName })} autoCapitalize="words" />
+                  <Suggestions
+                    options={previousLandlords.map((p) => p.landlordName.trim())}
+                    value={r.landlordName}
+                    onPick={(name) => {
+                      const from = previousLandlords.find((p) => p.landlordName.trim() === name);
+                      if (!from) return;
+                      patch({
+                        landlordName: from.landlordName,
+                        landlordIsAgent: from.landlordIsAgent,
+                        landlordAddress: { ...from.landlordAddress },
+                        landlordPhone: from.landlordPhone,
+                        landlordEmail: from.landlordEmail,
+                      });
+                    }}
                   />
                 </Field>
+                <AddressFields value={r.landlordAddress} onChange={(landlordAddress) => patch({ landlordAddress })} />
+                <TextField label="Phone" value={r.landlordPhone} onChange={(landlordPhone) => patch({ landlordPhone })} keyboardType="phone-pad" />
                 <TextField
-                  label="Remedial action taken"
-                  value={r.installationRemedial}
-                  onChange={(installationRemedial) => patch({ installationRemedial })}
-                  multiline
-                  style={{ minHeight: 70, textAlignVertical: 'top' }}
+                  label="Email"
+                  value={r.landlordEmail}
+                  onChange={(landlordEmail) => patch({ landlordEmail })}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  hint="Used for the reminder when next year's check is due."
                 />
-              </>
+              </View>,
             )}
-          </Card>
 
-          <SectionLabel>Notes (optional)</SectionLabel>
-          <Card>
-            <Input
-              value={r.notes}
-              onChangeText={(notes) => patch({ notes })}
-              placeholder="Anything else the landlord should know"
-              multiline
-              style={{ minHeight: 70, textAlignVertical: 'top' }}
-            />
-          </Card>
+            <Section
+              title={SECTIONS.appliances.title}
+              icon={SECTIONS.appliances.icon}
+              summary={summaries.appliances}
+              done={isDone('appliances')}
+              open={open.has('appliances')}
+              onToggle={() => toggle('appliances')}>
+              <View style={{ gap: Spacing.sm }}>
+                {r.appliances.map((a) => {
+                  const missing = applianceProblems(a);
+                  const fault = applianceHasFault(a);
+                  const [pill, pillColor] = fault
+                    ? [a.safeToUse === 'no' ? 'Not safe' : 'Defect', c.out]
+                    : missing.length
+                      ? [`${missing.length} to do`, c.low]
+                      : ['Safe', c.ok];
+                  const line = readings(a);
+                  return (
+                    <Pressable
+                      key={a.id}
+                      accessibilityRole="button"
+                      onPress={() => openAppliance(a.id)}
+                      style={({ pressed }) => [styles.applianceRow, { borderTopColor: c.border, opacity: pressed ? 0.6 : 1 }]}>
+                      <ApplianceIcon type={a.type} size={40} color={c.text} background={c.field} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.applianceTitle, { color: c.text }]} numberOfLines={1}>
+                          {[a.type || 'Appliance', a.location].filter(Boolean).join(' · ')}
+                        </Text>
+                        {!!(a.make || a.model) && (
+                          <Text style={[styles.applianceSub, { color: c.textSecondary }]} numberOfLines={1}>
+                            {[a.make, a.model].filter(Boolean).join(' ')}
+                          </Text>
+                        )}
+                        {!!line && (
+                          <Text style={[styles.applianceSub, { color: c.textSecondary }]} numberOfLines={1}>
+                            {line}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={[styles.pill, { backgroundColor: c.background }]}>
+                        <Text style={[styles.pillText, { color: pillColor }]}>{pill}</Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+                {!issued && (
+                  <Button label="Add appliance" variant="secondary" icon={{ ios: 'plus', md: 'add' }} onPress={addAppliance} />
+                )}
+              </View>
+            </Section>
 
-          <SectionLabel>Signatures</SectionLabel>
-          <Card style={formStyles.group}>
-            <Field label="Engineer">
-              <SignatureField value={r.engineerSignature} onChange={(engineerSignature) => patch({ engineerSignature })} />
-              {!r.engineerSignature && engineer.signature && (
+            {section(
+              'installation',
+              <View style={formStyles.group}>
+                <CheckRow
+                  label="Gas tightness test"
+                  kind="passFail"
+                  value={r.tightnessTest}
+                  onChange={(tightnessTest) => patch({ tightnessTest })}
+                  hint="Recommended by Gas Safe Register, though not a legal requirement."
+                />
+                <CheckRow
+                  label="Emergency control valve accessible and labelled"
+                  kind="yesNo"
+                  value={r.ecvAccessible}
+                  onChange={(ecvAccessible) => patch({ ecvAccessible })}
+                />
+                <CheckRow
+                  label="Protective equipotential bonding satisfactory"
+                  kind="yesNoNa"
+                  value={r.bonding}
+                  onChange={(bonding) => patch({ bonding })}
+                />
+                <CheckRow
+                  label="Installation pipework visual inspection"
+                  kind="passFail"
+                  value={r.pipeworkVisual}
+                  onChange={(pipeworkVisual) => patch({ pipeworkVisual })}
+                />
+                {(installationHasFault(r) || !!r.installationDefects) && (
+                  <>
+                    <TextField
+                      label="Installation defect"
+                      value={r.installationDefects}
+                      onChange={(installationDefects) => patch({ installationDefects })}
+                      multiline
+                      style={{ minHeight: 70, textAlignVertical: 'top' }}
+                    />
+                    <Field label="Classification">
+                      <Choice
+                        options={CLASSIFICATIONS}
+                        value={r.installationClassification}
+                        onChange={(installationClassification) => patch({ installationClassification })}
+                      />
+                    </Field>
+                    <TextField
+                      label="Remedial action taken"
+                      value={r.installationRemedial}
+                      onChange={(installationRemedial) => patch({ installationRemedial })}
+                      multiline
+                      style={{ minHeight: 70, textAlignVertical: 'top' }}
+                    />
+                  </>
+                )}
+              </View>,
+            )}
+
+            {section(
+              'notes',
+              <Input
+                value={r.notes}
+                onChangeText={(notes) => patch({ notes })}
+                placeholder="Anything else the landlord should know"
+                multiline
+                style={{ minHeight: 70, textAlignVertical: 'top' }}
+              />,
+              { optional: true },
+            )}
+
+            {section(
+              'signatures',
+              <View style={formStyles.group}>
+                <Field label="Engineer">
+                  <SignatureField value={r.engineerSignature} onChange={(engineerSignature) => patch({ engineerSignature })} />
+                  {!r.engineerSignature && engineer.signature && (
+                    <Button
+                      label="Use my saved signature"
+                      variant="plain"
+                      compact
+                      onPress={() => patch({ engineerSignature: engineer.signature })}
+                      style={{ alignSelf: 'flex-start' }}
+                    />
+                  )}
+                </Field>
+                <TextField
+                  label="Received by (optional)"
+                  value={r.receivedByName}
+                  onChange={(receivedByName) => patch({ receivedByName })}
+                  autoCapitalize="words"
+                  placeholder="Name of the person given the record"
+                />
+                <Choice
+                  options={[
+                    { value: 'Tenant', label: 'Tenant' },
+                    { value: 'Landlord', label: 'Landlord' },
+                    { value: 'Agent', label: 'Agent' },
+                    { value: 'Homeowner', label: 'Owner' },
+                  ]}
+                  value={r.receivedByRole}
+                  onChange={(receivedByRole) => patch({ receivedByRole })}
+                />
+                <SignatureField
+                  value={r.receivedBySignature}
+                  onChange={(receivedBySignature) => patch({ receivedBySignature })}
+                  emptyLabel="Not signed (optional)"
+                />
+              </View>,
+            )}
+
+            {showProblems && problems.length > 0 && !issued && (
+              <View style={[styles.problems, { backgroundColor: c.outSoft }]}>
+                <Text style={[styles.problemsTitle, { color: c.out }]}>Fill these in before issuing</Text>
+                {problems.map((p) => (
+                  <Text key={p} style={[styles.problem, { color: c.text }]}>
+                    • {p}
+                  </Text>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.actions}>
+              {!issued && (
                 <Button
-                  label="Use my saved signature"
-                  variant="plain"
-                  compact
-                  onPress={() => patch({ engineerSignature: engineer.signature })}
-                  style={{ alignSelf: 'flex-start' }}
+                  label={sharing ? 'Creating PDF…' : 'Preview draft PDF'}
+                  variant="secondary"
+                  icon={{ ios: 'doc.text.magnifyingglass', md: 'preview' }}
+                  onPress={() => share()}
+                  disabled={sharing}
                 />
               )}
-            </Field>
-            <TextField
-              label="Received by (optional)"
-              value={r.receivedByName}
-              onChange={(receivedByName) => patch({ receivedByName })}
-              autoCapitalize="words"
-              placeholder="Name of the person given the record"
-            />
-            <Choice
-              options={[
-                { value: 'Tenant', label: 'Tenant' },
-                { value: 'Landlord', label: 'Landlord' },
-                { value: 'Agent', label: 'Agent' },
-                { value: 'Homeowner', label: 'Owner' },
-              ]}
-              value={r.receivedByRole}
-              onChange={(receivedByRole) => patch({ receivedByRole })}
-            />
-            <SignatureField
-              value={r.receivedBySignature}
-              onChange={(receivedBySignature) => patch({ receivedBySignature })}
-              emptyLabel="Not signed (optional)"
-            />
-          </Card>
-        </Locked>
-
-        {showProblems && problems.length > 0 && !issued && (
-          <View style={[styles.problems, { backgroundColor: c.outSoft }]}>
-            <Text style={[styles.problemsTitle, { color: c.out }]}>Fill these in before issuing</Text>
-            {problems.map((p) => (
-              <Text key={p} style={[styles.problem, { color: c.text }]}>
-                • {p}
-              </Text>
-            ))}
+              <Button label="Delete record" variant="danger" icon={{ ios: 'trash', md: 'delete' }} onPress={remove} />
+            </View>
           </View>
-        )}
+        </ScrollView>
 
-        <View style={styles.actions}>
-          {issued ? (
-            <Button
-              label={sharing ? 'Creating PDF…' : 'Share PDF'}
-              icon={{ ios: 'square.and.arrow.up', md: 'share' }}
-              onPress={() => share()}
-              disabled={sharing}
+        <View style={[styles.ctaWrap, { paddingBottom: insets.bottom + Spacing.md }]} pointerEvents="box-none">
+          <Pressable
+            accessibilityRole="button"
+            onPress={cta.onPress}
+            disabled={sharing}
+            style={({ pressed }) => [styles.cta, { backgroundColor: c.primary, opacity: pressed || sharing ? 0.85 : 1 }]}>
+            <Icon
+              ios={issued ? 'square.and.arrow.up' : 'checkmark.seal'}
+              md={issued ? 'share' : 'verified'}
+              size={20}
+              color={c.primaryText}
             />
-          ) : (
-            <>
-              <Button label="Issue record" icon={{ ios: 'checkmark.seal', md: 'verified' }} onPress={issue} />
-              <Button
-                label={sharing ? 'Creating PDF…' : 'Preview draft PDF'}
-                variant="secondary"
-                onPress={() => share()}
-                disabled={sharing}
-              />
-            </>
-          )}
-          <Button label="Delete record" variant="danger" icon={{ ios: 'trash', md: 'delete' }} onPress={remove} />
+            <Text style={[styles.ctaText, { color: c.primaryText }]}>{cta.label}</Text>
+          </Pressable>
         </View>
-      </ScrollView>
+      </View>
     </>
   );
 }
 
-/** Stops changes to an issued record until it's reopened. Scrolling still works. */
-function Locked({ locked, children }: { locked: boolean; children: ReactNode }) {
-  return (
-    <View pointerEvents={locked ? 'none' : 'auto'} style={locked ? { opacity: 0.75 } : undefined}>
-      {children}
-    </View>
-  );
-}
-
-function StatusCard({ record: r, onReopen }: { record: GasRecord; onReopen: () => void }) {
+/** One part of the record. Shows a tick when complete and folds away when tapped. */
+function Section({
+  title,
+  icon,
+  summary,
+  done,
+  optional,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  icon: IconPair;
+  summary: string;
+  done: boolean;
+  optional?: boolean;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
   const c = useTheme();
-  const fault = recordHasFault(r);
-  if (r.status === 'issued') {
-    return (
-      <View style={[styles.status, { backgroundColor: c.okSoft }]}>
-        <Icon ios="checkmark.seal.fill" md="verified" size={26} color={c.ok} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[styles.statusTitle, { color: c.text }]}>
-            Issued {r.issuedAt ? new Date(r.issuedAt).toLocaleDateString('en-GB') : ''}
-          </Text>
-          <Text style={[styles.statusText, { color: c.textSecondary }]}>
-            {fault ? 'Records gas safety defects. ' : ''}Next check due by {formatLongDate(r.nextDueDate)}.
-          </Text>
-          <Button label="Edit record" variant="plain" compact onPress={onReopen} style={{ alignSelf: 'flex-start', marginLeft: -Spacing.md }} />
-        </View>
-      </View>
-    );
-  }
+  const tone = done ? { fg: c.ok, bg: c.okSoft } : optional ? { fg: c.textSecondary, bg: c.field } : { fg: c.brand, bg: c.primarySoft };
   return (
-    <View style={[styles.status, { backgroundColor: c.primarySoft }]}>
-      <Icon ios="pencil.and.list.clipboard" md="edit_note" size={26} color={c.primary} />
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.statusTitle, { color: c.text }]}>Draft</Text>
-        <Text style={[styles.statusText, { color: c.textSecondary }]}>
-          Saved as you go. Issue it when every check is filled in.
-        </Text>
-      </View>
+    <View
+      style={[
+        styles.section,
+        {
+          backgroundColor: c.card,
+          borderColor: done || optional || open ? c.border : c.brand,
+          borderStyle: done || optional || open ? 'solid' : 'dashed',
+        },
+      ]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`${title}, ${done ? 'complete' : optional ? 'optional' : 'to do'}`}
+        onPress={onToggle}
+        style={({ pressed }) => [styles.sectionHead, { opacity: pressed ? 0.7 : 1 }]}>
+        <View style={[styles.sectionIcon, { backgroundColor: tone.bg }]}>
+          <Icon {...icon} size={20} color={tone.fg} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.sectionTitle, { color: c.text }]}>{title}</Text>
+          {!open && (
+            <Text style={[styles.sectionSummary, { color: c.textSecondary }]} numberOfLines={1}>
+              {summary}
+            </Text>
+          )}
+        </View>
+        {done ? (
+          <Icon ios="checkmark.circle.fill" md="check_circle" size={22} color={c.ok} />
+        ) : (
+          <Icon ios={open ? 'chevron.up' : 'chevron.down'} md={open ? 'expand_less' : 'expand_more'} size={18} color={c.textSecondary} />
+        )}
+      </Pressable>
+      {open && <View style={styles.sectionBody}>{children}</View>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    padding: Spacing.lg,
-    paddingBottom: 80,
-  },
-  status: { flexDirection: 'row', gap: Spacing.md, padding: Spacing.lg, borderRadius: Radius.md, alignItems: 'flex-start' },
-  statusTitle: { fontSize: 17, fontWeight: '700' },
-  statusText: { fontSize: 14, lineHeight: 20 },
-  applianceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    padding: Spacing.lg,
-  },
-  applianceTitle: { fontSize: 16, fontWeight: '600' },
-  badges: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap' },
-  problems: { borderRadius: Radius.md, padding: Spacing.lg, gap: 4, marginTop: Spacing.xl },
+  inner: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', paddingHorizontal: Spacing.lg },
+  band: { paddingTop: Spacing.xs, paddingBottom: Spacing.xl, borderBottomLeftRadius: 26, borderBottomRightRadius: 26 },
+  address: { fontSize: 24, fontWeight: '800', letterSpacing: -0.3 },
+  bandSub: { fontSize: 14, marginTop: 2 },
+  progressText: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.lg },
+  track: { height: 8, borderRadius: 4, marginTop: 6, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 4 },
+  issued: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.md, padding: Spacing.md, marginTop: Spacing.lg },
+  issuedText: { flex: 1, fontSize: 14, fontWeight: '600' },
+  list: { gap: Spacing.sm, marginTop: Spacing.lg },
+  section: { borderRadius: Radius.lg, borderWidth: 1.5, overflow: 'hidden' },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md },
+  sectionIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  sectionTitle: { fontSize: 16, fontWeight: '700' },
+  sectionSummary: { fontSize: 13.5, marginTop: 1 },
+  sectionBody: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.lg, paddingTop: Spacing.xs },
+  applianceRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.sm, borderTopWidth: StyleSheet.hairlineWidth },
+  applianceTitle: { fontSize: 15.5, fontWeight: '700' },
+  applianceSub: { fontSize: 13 },
+  pill: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  pillText: { fontSize: 12, fontWeight: '700' },
+  problems: { borderRadius: Radius.md, padding: Spacing.lg, gap: 4, marginTop: Spacing.md },
   problemsTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
   problem: { fontSize: 15, lineHeight: 21 },
-  actions: { gap: Spacing.sm, marginTop: Spacing.xl },
+  actions: { gap: Spacing.sm, marginTop: Spacing.lg },
+  ctaWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm },
+  cta: {
+    width: '100%',
+    maxWidth: MaxContentWidth - Spacing.lg * 2,
+    alignSelf: 'center',
+    minHeight: 54,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  ctaText: { fontSize: 17, fontWeight: '800' },
   missing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.lg },
 });

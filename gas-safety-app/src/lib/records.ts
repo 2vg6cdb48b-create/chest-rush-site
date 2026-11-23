@@ -20,6 +20,7 @@ export function emptyEngineer(): Engineer {
     nextRecordNumber: 1,
     lastBackupAt: null,
     remindersOn: true,
+    appearance: 'system',
   };
 }
 
@@ -356,6 +357,7 @@ export function parseAppData(raw: unknown): AppData {
     nextRecordNumber: Math.max(1, Number(e.nextRecordNumber) || 1),
     lastBackupAt: typeof e.lastBackupAt === 'number' ? e.lastBackupAt : null,
     remindersOn: e.remindersOn !== false,
+    appearance: e.appearance === 'light' || e.appearance === 'dark' ? e.appearance : 'system',
     recordPrefix: typeof e.recordPrefix === 'string' ? e.recordPrefix : 'LGSR-',
   };
   const records = src.records
@@ -455,4 +457,34 @@ export function signatureViewBox(sig: Signature): string {
   if (!Number.isFinite(minX)) return `0 0 ${sig.width} ${sig.height}`;
   const pad = 6;
   return `${minX - pad} ${minY - pad} ${Math.max(1, maxX - minX) + pad * 2} ${Math.max(1, maxY - minY) + pad * 2}`;
+}
+
+export type SectionKey = 'date' | 'property' | 'landlord' | 'appliances' | 'installation' | 'signatures';
+
+/** The six parts of a record, in order, and whether each is complete. */
+export function sectionStatus(r: GasRecord): { key: SectionKey; done: boolean }[] {
+  const installationAnswered = !!(r.tightnessTest && r.ecvAccessible && r.bonding && r.pipeworkVisual);
+  const installationDone =
+    installationAnswered &&
+    (!installationHasFault(r) || !!r.installationDefects.trim()) &&
+    (!r.installationDefects.trim() || !!r.installationRemedial.trim());
+  return [
+    { key: 'date', done: isIsoDate(r.checkDate) && isIsoDate(r.nextDueDate) },
+    { key: 'property', done: !!r.property.line1.trim() && !!r.property.postcode.trim() },
+    { key: 'landlord', done: !!r.landlordName.trim() && !!r.landlordAddress.line1.trim() },
+    {
+      key: 'appliances',
+      done: r.appliances.length > 0 && r.appliances.every((a) => applianceProblems(a).length === 0),
+    },
+    { key: 'installation', done: installationDone },
+    { key: 'signatures', done: !!r.engineerSignature },
+  ];
+}
+
+/** A one-line summary of the defects on a record, e.g. "At Risk · warning notice issued". */
+export function defectSummary(r: GasRecord): string {
+  const classes = [...r.appliances.map((a) => a.classification), r.installationClassification];
+  const worst = classes.includes('ID') ? 'Immediately Dangerous' : classes.includes('AR') ? 'At Risk' : 'Defects recorded';
+  const notice = r.appliances.some((a) => a.warningNoticeIssued === 'yes') ? ' · warning notice issued' : '';
+  return worst + notice;
 }

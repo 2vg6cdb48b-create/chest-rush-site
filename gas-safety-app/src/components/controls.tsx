@@ -142,7 +142,7 @@ export function Choice<T extends string>({
               },
             ]}>
             <Text
-              style={[styles.choiceText, { color: active ? '#FFFFFF' : c.text }]}
+              style={[styles.choiceText, { color: active ? (t === 'neutral' ? c.primaryText : c.onStatus) : c.text }]}
               numberOfLines={1}>
               {opt.label}
             </Text>
