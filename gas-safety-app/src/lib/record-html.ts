@@ -98,6 +98,8 @@ export function recordHtml(r: GasRecord, currentEngineer: Engineer): string {
   }
 
   const who = r.landlordIsAgent ? 'Agent' : 'Landlord';
+  // With a managing agent, the landlord (owner) can be recorded too.
+  const showOwner = r.landlordIsAgent && !!r.ownerName.trim();
   const draft = r.status !== 'issued';
 
   return `<!doctype html>
@@ -182,11 +184,13 @@ ${draft ? '<div class="draft">DRAFT</div>' : ''}
     ${field('Postcode', esc(r.property.postcode))}
     ${field('Tenant / occupier', esc(r.tenantName))}
   </div></div>
-  <div class="box"><h2>${who} details</h2><div class="in">
-    ${field('Name', esc(r.landlordName))}
-    ${field('Address', lines(formatAddress(r.landlordAddress)))}
+  <div class="box"><h2>${showOwner ? 'Agent and landlord details' : `${who} details`}</h2><div class="in">
+    ${field(showOwner ? 'Agent' : 'Name', esc(r.landlordName))}
+    ${field(showOwner ? 'Agent address' : 'Address', lines(formatAddress(r.landlordAddress)))}
     ${field('Phone', esc(r.landlordPhone))}
     ${field('Email', esc(r.landlordEmail))}
+    ${showOwner ? field('Landlord', esc(r.ownerName)) : ''}
+    ${showOwner && formatAddress(r.ownerAddress) ? field('Landlord address', lines(formatAddress(r.ownerAddress))) : ''}
   </div></div>
 </div>
 

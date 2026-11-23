@@ -204,7 +204,11 @@ export default function RecordScreen() {
   const summaries: Record<SectionKey | 'notes', string> = {
     date: r.checkDate ? `${formatLongDate(r.checkDate)} · next due ${formatLongDate(r.nextDueDate)}` : 'Not set',
     property: formatAddress(r.property) || 'Address and postcode',
-    landlord: r.landlordName.trim() || `${who} name and address`,
+    landlord: r.landlordName.trim()
+      ? r.landlordIsAgent
+        ? `Agent: ${r.landlordName.trim()}${r.ownerName.trim() ? ` · Landlord: ${r.ownerName.trim()}` : ''}`
+        : r.landlordName.trim()
+      : `${who} name and address`,
     appliances: r.appliances.length
       ? `${r.appliances.length} appliance${r.appliances.length === 1 ? '' : 's'}${r.appliances.some(applianceHasFault) ? ' · defects recorded' : ''}`
       : 'Add each appliance you check',
@@ -366,6 +370,8 @@ export default function RecordScreen() {
                         landlordAddress: { ...from.landlordAddress },
                         landlordPhone: from.landlordPhone,
                         landlordEmail: from.landlordEmail,
+                        ownerName: from.ownerName,
+                        ownerAddress: { ...from.ownerAddress },
                       });
                     }}
                   />
@@ -380,6 +386,21 @@ export default function RecordScreen() {
                   autoCapitalize="none"
                   hint="Used for the reminder when next year's check is due."
                 />
+                {r.landlordIsAgent && (
+                  <View style={[styles.owner, { borderTopColor: c.border }]}>
+                    <Text style={[styles.ownerTitle, { color: c.text }]}>Landlord (optional)</Text>
+                    <Text style={[styles.ownerHint, { color: c.textSecondary }]}>
+                      The owner of the property, if you want them on the record as well as the agent.
+                    </Text>
+                    <TextField
+                      label="Landlord name"
+                      value={r.ownerName}
+                      onChange={(ownerName) => patch({ ownerName })}
+                      autoCapitalize="words"
+                    />
+                    <AddressFields value={r.ownerAddress} onChange={(ownerAddress) => patch({ ownerAddress })} />
+                  </View>
+                )}
               </View>,
             )}
 
@@ -692,5 +713,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   ctaText: { fontSize: 17, fontWeight: '800' },
+  owner: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.lg, gap: Spacing.md },
+  ownerTitle: { fontSize: 16, fontWeight: '700' },
+  ownerHint: { fontSize: 13.5, lineHeight: 19, marginTop: -Spacing.sm },
   missing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.lg },
 });

@@ -77,6 +77,9 @@ export type GasRecord = {
   landlordAddress: Address;
   landlordPhone: string;
   landlordEmail: string;
+  /** When a managing agent is recorded above: the landlord who owns the property (optional). */
+  ownerName: string;
+  ownerAddress: Address;
   appliances: Appliance[];
   tightnessTest: PassFail | '';
   ecvAccessible: YesNo | '';
