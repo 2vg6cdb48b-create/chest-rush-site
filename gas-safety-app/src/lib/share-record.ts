@@ -2,9 +2,12 @@ import * as Print from 'expo-print';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
-/** Turns the record into an A4 landscape PDF and opens the share sheet (email, WhatsApp, Files…). */
-export async function shareRecordPdf(html: string, filename: string) {
-  const { uri } = await Print.printToFileAsync({ html, width: 842, height: 595 });
+export type PageOrientation = 'landscape' | 'portrait';
+
+/** Turns the page into an A4 PDF (landscape for records, portrait for invoices) and opens the share sheet. */
+export async function shareRecordPdf(html: string, filename: string, orientation: PageOrientation = 'landscape') {
+  const size = orientation === 'landscape' ? { width: 842, height: 595 } : { width: 595, height: 842 };
+  const { uri } = await Print.printToFileAsync({ html, ...size });
   let shareUri = uri;
   try {
     const named = new File(Paths.cache, filename);

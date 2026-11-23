@@ -42,6 +42,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Records' }} />
           <Stack.Screen name="record/[id]" options={{ title: 'Gas safety record' }} />
           <Stack.Screen name="appliance/[recordId]/[applianceId]" options={{ title: 'Appliance' }} />
+          <Stack.Screen name="invoice/[id]" options={{ title: 'Invoice' }} />
         </Stack>
         <DialogHost />
       </StoreProvider>
