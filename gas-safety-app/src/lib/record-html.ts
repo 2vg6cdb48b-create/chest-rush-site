@@ -60,7 +60,8 @@ const FLUE: Record<string, string> = { RS: 'RS', OF: 'OF', FL: 'FL', na: 'N/A' }
 export function recordHtml(r: GasRecord, currentEngineer: Engineer): string {
   // An issued record keeps the details it was issued with.
   const engineer = r.engineerDetails ?? currentEngineer;
-  const minRows = 2;
+  // No blank padding rows: only an empty row when there are no appliances yet.
+  const minRows = 1;
   const rows: (Appliance | null)[] = [...r.appliances];
   while (rows.length < minRows) rows.push(null);
 
