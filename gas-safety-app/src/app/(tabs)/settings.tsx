@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import type { ComponentProps } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Card, Choice, SectionLabel } from '@/components/controls';
 import { AddressFields, Field, Input, TextField, formStyles } from '@/components/form';
@@ -186,6 +186,15 @@ export default function SettingsScreen() {
         </Card>
 
         <SectionLabel>Backup</SectionLabel>
+        {Platform.OS === 'web' && (
+          <View style={[styles.webNote, { backgroundColor: c.lowSoft }]}>
+            <Text style={{ color: c.text, fontSize: 14, lineHeight: 20 }}>
+              On the website, your details and records are saved in this browser only. On an iPhone, Safari, a Home
+              Screen icon and links opened inside other apps (like Claude or WhatsApp) each keep their own separate
+              copy, and Private tabs keep nothing. Always open it the same way, and back up regularly.
+            </Text>
+          </View>
+        )}
         <Card style={styles.list}>
           <Row
             icon={{ ios: 'externaldrive.badge.icloud', md: 'backup' }}
@@ -268,5 +277,6 @@ const styles = StyleSheet.create({
   },
   list: { paddingVertical: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: 14 },
+  webNote: { borderRadius: 12, padding: 14, marginBottom: 8 },
   footer: { fontSize: 13, textAlign: 'center', lineHeight: 19, marginTop: Spacing.xl },
 });
