@@ -22,7 +22,6 @@ import { recordHtml } from '@/lib/record-html';
 import {
   applianceHasFault,
   applianceProblems,
-  coRatio,
   engineerDetailsOf,
   formatAddress,
   formatLongDate,
@@ -64,11 +63,11 @@ function pdfName(r: GasRecord) {
 }
 
 function readings(a: Appliance) {
-  const ratio = coRatio(a.coPpm, a.co2Percent);
   return [
     a.operatingPressure && `${a.operatingPressure} mbar`,
     a.heatInput && `${a.heatInput} kW`,
-    ratio && `ratio ${ratio}`,
+    a.ratioLow.trim() && `low ${a.ratioLow.trim()}`,
+    a.ratioHigh.trim() && `high ${a.ratioHigh.trim()}`,
     a.flueType === 'FL' && 'flueless',
   ]
     .filter(Boolean)

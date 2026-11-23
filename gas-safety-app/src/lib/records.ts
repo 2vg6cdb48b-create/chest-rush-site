@@ -120,6 +120,10 @@ export function newAppliance(): Appliance {
     heatInput: '',
     coPpm: '',
     co2Percent: '',
+    ratioHigh: '',
+    coLowPpm: '',
+    co2LowPercent: '',
+    ratioLow: '',
     safetyDevices: '',
     ventilation: '',
     flueVisual: '',
@@ -276,7 +280,9 @@ export function applianceProblems(a: Appliance): string[] {
     if (!a.make.trim()) p.push('make');
     if (!a.model.trim()) p.push('model');
     if (!a.flueType) p.push('flue type');
-    if (!a.operatingPressure.trim() && !a.heatInput.trim() && !(a.coPpm.trim() && a.co2Percent.trim())) {
+    const highFire = a.coPpm.trim() && a.co2Percent.trim();
+    const lowFire = a.coLowPpm.trim() && a.co2LowPercent.trim();
+    if (!a.operatingPressure.trim() && !a.heatInput.trim() && !highFire && !lowFire) {
       p.push('operating pressure, heat input or combustion readings');
     }
     if (!a.safetyDevices) p.push('safety devices');
@@ -371,7 +377,14 @@ export function parseAppData(raw: unknown): AppData {
         property: address(r.property),
         landlordAddress: address(r.landlordAddress),
         appliances: Array.isArray(r.appliances)
-          ? r.appliances.map((a) => ({ ...newAppliance(), ...a, id: text(a?.id) || newId() }))
+          ? r.appliances.map((a) => {
+              const appliance: Appliance = { ...newAppliance(), ...a, id: text(a?.id) || newId() };
+              // Records made before ratios were typed in had them worked out; keep that figure.
+              if (typeof (a as Partial<Appliance>)?.ratioHigh !== 'string') {
+                appliance.ratioHigh = coRatio(text(appliance.coPpm), text(appliance.co2Percent));
+              }
+              return appliance;
+            })
           : [],
         engineerSignature: signature(r.engineerSignature),
         engineerDetails:
@@ -398,6 +411,10 @@ export function exampleRecord(number: string): GasRecord {
     heatInput: '',
     coPpm: '24',
     co2Percent: '8.9',
+    ratioHigh: '0.0003',
+    coLowPpm: '12',
+    co2LowPercent: '8.6',
+    ratioLow: '0.0001',
     safetyDevices: 'pass',
     ventilation: 'na',
     flueVisual: 'pass',

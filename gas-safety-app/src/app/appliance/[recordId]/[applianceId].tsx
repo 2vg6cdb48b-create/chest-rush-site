@@ -6,7 +6,7 @@ import { Button, Card, Choice, SectionLabel } from '@/components/controls';
 import { CheckRow, Field, Input, NumberField, Suggestions, TextField, formStyles } from '@/components/form';
 import { MaxContentWidth, Radius, Spacing, useTheme } from '@/constants/theme';
 import { catalogueFor, kindOf } from '@/data/appliances';
-import { applianceHasFault, applianceProblems, coRatio } from '@/lib/records';
+import { applianceHasFault, applianceProblems } from '@/lib/records';
 import { useStore } from '@/lib/store';
 import type { Appliance, Classification, FlueType } from '@/lib/types';
 import { confirm } from '@/lib/ui';
@@ -103,7 +103,6 @@ export default function ApplianceScreen() {
   const modelOptions = unique([...learnedModels, ...(catalogueMake ? catalogue[catalogueMake] : [])]);
   const fault = applianceHasFault(a);
   const missing = applianceProblems(a);
-  const ratio = coRatio(a.coPpm, a.co2Percent);
 
   const remove = async () => {
     const ok = await confirm('Remove this appliance?', 'It will be taken off this record.', 'Remove', true);
@@ -187,6 +186,19 @@ export default function ApplianceScreen() {
                     <NumberField label="Heat input" unit="kW" value={a.heatInput} onChange={(heatInput) => patch({ heatInput })} />
                   </View>
                 </View>
+                <Text style={[styles.fireLabel, { color: c.text }]}>Combustion analyser · low fire</Text>
+                <View style={styles.inline}>
+                  <View style={{ flex: 1 }}>
+                    <NumberField label="CO" unit="ppm" value={a.coLowPpm} onChange={(coLowPpm) => patch({ coLowPpm })} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <NumberField label="CO₂" unit="%" value={a.co2LowPercent} onChange={(co2LowPercent) => patch({ co2LowPercent })} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <NumberField label="Ratio" unit="" value={a.ratioLow} onChange={(ratioLow) => patch({ ratioLow })} />
+                  </View>
+                </View>
+                <Text style={[styles.fireLabel, { color: c.text }]}>Combustion analyser · high fire</Text>
                 <View style={styles.inline}>
                   <View style={{ flex: 1 }}>
                     <NumberField label="CO" unit="ppm" value={a.coPpm} onChange={(coPpm) => patch({ coPpm })} />
@@ -194,12 +206,13 @@ export default function ApplianceScreen() {
                   <View style={{ flex: 1 }}>
                     <NumberField label="CO₂" unit="%" value={a.co2Percent} onChange={(co2Percent) => patch({ co2Percent })} />
                   </View>
+                  <View style={{ flex: 1 }}>
+                    <NumberField label="Ratio" unit="" value={a.ratioHigh} onChange={(ratioHigh) => patch({ ratioHigh })} />
+                  </View>
                 </View>
-                {!!ratio && (
-                  <Text style={[styles.ratio, { color: c.text }]}>
-                    CO/CO₂ ratio <Text style={{ fontWeight: '800' }}>{ratio}</Text>
-                  </Text>
-                )}
+                <Text style={[styles.help, { color: c.textSecondary }]}>
+                  Enter the CO/CO₂ ratio as your analyser shows it, e.g. 0.0012.
+                </Text>
               </Card>
 
               <SectionLabel>Checks</SectionLabel>
@@ -291,7 +304,7 @@ const styles = StyleSheet.create({
   },
   inline: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start' },
   help: { fontSize: 14, lineHeight: 20 },
-  ratio: { fontSize: 16 },
+  fireLabel: { fontSize: 14, fontWeight: '700', marginTop: Spacing.xs },
   note: { borderRadius: Radius.md, padding: Spacing.lg },
   actions: { gap: Spacing.sm, marginTop: Spacing.xl },
   missing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.lg },

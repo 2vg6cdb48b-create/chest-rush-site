@@ -96,7 +96,7 @@ export function NumberField({
           placeholderTextColor={c.textSecondary}
           style={[styles.numberInput, { color: c.text }]}
         />
-        <Text style={[styles.unit, { color: c.textSecondary }]}>{unit}</Text>
+        {!!unit && <Text style={[styles.unit, { color: c.textSecondary }]}>{unit}</Text>}
       </View>
     </Field>
   );

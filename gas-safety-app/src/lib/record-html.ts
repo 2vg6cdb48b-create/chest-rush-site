@@ -1,6 +1,5 @@
 import {
   applianceHasFault,
-  coRatio,
   formatAddress,
   formatUkDate,
   installationHasFault,
@@ -76,8 +75,8 @@ export function recordHtml(r: GasRecord, currentEngineer: Engineer): string {
   const checkRows = rows
     .map((a, i) =>
       a
-        ? `<tr><td class="c n">${i + 1}</td><td class="c">${esc(a.operatingPressure)}</td><td class="c">${esc(a.heatInput)}</td>${ans(a.safetyDevices)}${ans(a.ventilation)}${ans(a.flueVisual)}${ans(a.fluePerformance)}<td class="c">${esc(a.coPpm)}</td><td class="c">${esc(a.co2Percent)}</td><td class="c">${esc(coRatio(a.coPpm, a.co2Percent))}</td>${fact(a.serviced)}${ans(a.coAlarmFitted)}${ans(a.coAlarmTested)}${ans(a.safeToUse)}</tr>`
-        : `<tr><td class="c n">${i + 1}</td><td colspan="13">&nbsp;</td></tr>`,
+        ? `<tr><td class="c n">${i + 1}</td><td class="c">${esc(a.operatingPressure)}</td><td class="c">${esc(a.heatInput)}</td>${ans(a.safetyDevices)}${ans(a.ventilation)}${ans(a.flueVisual)}${ans(a.fluePerformance)}<td class="c">${esc(a.coLowPpm)}</td><td class="c">${esc(a.co2LowPercent)}</td><td class="c">${esc(a.ratioLow)}</td><td class="c hi">${esc(a.coPpm)}</td><td class="c">${esc(a.co2Percent)}</td><td class="c">${esc(a.ratioHigh)}</td>${fact(a.serviced)}${ans(a.coAlarmFitted)}${ans(a.coAlarmTested)}${ans(a.safeToUse)}</tr>`
+        : `<tr><td class="c n">${i + 1}</td><td colspan="16">&nbsp;</td></tr>`,
     )
     .join('');
 
@@ -131,6 +130,8 @@ export function recordHtml(r: GasRecord, currentEngineer: Engineer): string {
   th { background: #F5F7FA; color: #2B3742; font-size: 6.8pt; font-weight: 700; padding: .8mm 1mm; border: .2mm solid #CDD5DF; vertical-align: bottom; line-height: 1.15; }
   td { border: .2mm solid #CDD5DF; padding: .6mm 1.2mm; height: 5mm; vertical-align: middle; }
   td.c { text-align: center; }
+  th.grp { text-align: center; }
+  .hi { border-left: .5mm solid #B9C3D0; }
   td.n { width: 7mm; color: #47525E; font-weight: 700; }
   td.bad { color: #B42318; font-weight: 800; }
   td.none { color: #47525E; font-style: italic; }
@@ -196,9 +197,12 @@ ${draft ? '<div class="draft">DRAFT</div>' : ''}
 
 <div class="sec"><h2>Inspection details</h2>
 <table><thead><tr>
-  <th>No.</th><th>Operating pressure (mbar)</th><th>Heat input (kW)</th><th>Safety device(s) correct operation</th><th>Ventilation satisfactory</th>
-  <th>Visual condition of flue / termination satisfactory</th><th>Flue performance checks (spillage / flue flow)</th>
-  <th>Combustion CO (ppm)</th><th>CO₂ (%)</th><th>CO/CO₂ ratio</th><th>Appliance serviced</th><th>CO alarm fitted</th><th>CO alarm tested</th><th>Appliance safe to use</th>
+  <th rowspan="2">No.</th><th rowspan="2">Operating pressure (mbar)</th><th rowspan="2">Heat input (kW)</th><th rowspan="2">Safety device(s) correct operation</th><th rowspan="2">Ventilation satisfactory</th>
+  <th rowspan="2">Visual condition of flue / termination satisfactory</th><th rowspan="2">Flue performance checks (spillage / flue flow)</th>
+  <th colspan="3" class="grp">Combustion — low fire</th><th colspan="3" class="grp hi">Combustion — high fire</th>
+  <th rowspan="2">Appliance serviced</th><th rowspan="2">CO alarm fitted</th><th rowspan="2">CO alarm tested</th><th rowspan="2">Appliance safe to use</th>
+</tr><tr>
+  <th>CO (ppm)</th><th>CO₂ (%)</th><th>Ratio</th><th class="hi">CO (ppm)</th><th>CO₂ (%)</th><th>Ratio</th>
 </tr></thead><tbody>${checkRows}</tbody></table></div>
 
 <div class="sec"><h2>Gas safety defects identified and remedial action</h2>

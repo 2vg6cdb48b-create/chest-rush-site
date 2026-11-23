@@ -28,9 +28,15 @@ export type Appliance = {
   operatingPressure: string;
   /** Heat input in kW. */
   heatInput: string;
-  /** Combustion analyser readings. */
+  /** Combustion analyser readings at high fire (maximum rate). */
   coPpm: string;
   co2Percent: string;
+  /** CO/CO2 ratio as shown on the analyser at high fire. */
+  ratioHigh: string;
+  /** Combustion analyser readings at low fire (minimum rate). */
+  coLowPpm: string;
+  co2LowPercent: string;
+  ratioLow: string;
   safetyDevices: PassFail | '';
   ventilation: YesNoNa | '';
   flueVisual: PassFail | '';
