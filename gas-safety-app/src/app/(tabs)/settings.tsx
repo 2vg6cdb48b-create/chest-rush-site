@@ -188,6 +188,22 @@ export default function SettingsScreen() {
 
         <SectionLabel>Invoices</SectionLabel>
         <Card style={formStyles.group}>
+          <Field
+            label="Invoice style"
+            hint={
+              e.invoiceStyle === 'classic'
+                ? 'Classic: a plain black and white document, like a bank or accountant’s invoice.'
+                : 'Custom: navy and orange with your logo, matching your gas safety records.'
+            }>
+            <Choice
+              options={[
+                { value: 'custom', label: 'Custom' },
+                { value: 'classic', label: 'Classic' },
+              ]}
+              value={e.invoiceStyle}
+              onChange={set('invoiceStyle')}
+            />
+          </Field>
           <Field label="VAT on new invoices">
             <Choice options={VAT_OPTIONS} value={e.defaultVatRate} onChange={set('defaultVatRate')} />
           </Field>

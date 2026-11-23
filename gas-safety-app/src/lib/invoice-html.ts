@@ -1,5 +1,6 @@
 import { invoiceTotals, linePence, money, parseAmount, percentLabel, vatPercent, discountPercentOf } from './invoices';
 import { LOGO } from './record-html';
+import { classicInvoiceHtml } from './invoice-html-classic';
 import { formatAddress, formatUkDate } from './records';
 import type { Engineer, Invoice } from './types';
 
@@ -19,8 +20,13 @@ const lines = (...parts: string[]) =>
 
 const qtyLabel = (q: string) => (q.trim() === '' ? '1' : String(Number(parseAmount(q).toFixed(3))));
 
-/** The invoice as a printable A4 portrait page, in the same style as the gas safety record. */
+/** The invoice as a printable A4 portrait page, in the style chosen in Settings. */
 export function invoiceHtml(inv: Invoice, e: Engineer): string {
+  return e.invoiceStyle === 'classic' ? classicInvoiceHtml(inv, e) : customInvoiceHtml(inv, e);
+}
+
+/** Custom: the branded navy and orange layout, matching the gas safety record. */
+function customInvoiceHtml(inv: Invoice, e: Engineer): string {
   const t = invoiceTotals(inv);
   const vat = inv.vatRate !== 'none';
   const rate = vatPercent(inv.vatRate);
@@ -46,7 +52,6 @@ export function invoiceHtml(inv: Invoice, e: Engineer): string {
     e.companyName.trim() && e.name.trim() !== e.companyName.trim() ? e.name : '',
     formatAddress(e.address),
     [e.phone, e.email].map((s) => s.trim()).filter(Boolean).join(' · '),
-    e.gasSafeNumber.trim() ? `Gas Safe reg. ${e.gasSafeNumber.trim()}` : '',
     vat && e.vatNumber.trim() ? `VAT reg. no. ${e.vatNumber.trim()}` : '',
   );
 
@@ -77,7 +82,8 @@ export function invoiceHtml(inv: Invoice, e: Engineer): string {
       [e.bankSortCode.trim() && `Sort code <b>${esc(e.bankSortCode.trim())}</b>`, e.bankAccountNumber.trim() && `Account <b>${esc(e.bankAccountNumber.trim())}</b>`]
         .filter(Boolean)
         .join(' · ') +
-      `<br>Reference: <b>${esc(inv.number)}</b>`
+      `<br>Reference: <b>${esc(inv.number)}</b>` +
+      '<div class="small">Please use the invoice number as the payment reference.</div>'
     : '';
 
   const bottom = [
@@ -106,6 +112,7 @@ export function invoiceHtml(inv: Invoice, e: Engineer): string {
   .job { margin-top: 2mm; }
   .job span { color: #5B6472; }
   .notes { white-space: pre-wrap; }
+  .small { color: #5B6472; font-size: 8.5pt; margin-top: 1.5mm; line-height: 1.4; }
   table { width: 100%; border-collapse: collapse; margin-top: 7mm; }
   th { text-align: left; background: #F5F7FA; color: #3B4654; font-size: 8pt; letter-spacing: .05em; text-transform: uppercase; padding: 2.4mm 2.5mm; border-bottom: .5mm solid #13294B; }
   td { padding: 2.8mm 2.5mm; border-bottom: .25mm solid #E3E7EE; vertical-align: top; }
