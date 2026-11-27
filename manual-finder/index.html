@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manual finder</title>
+<meta name="theme-color" content="#121417">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Manual finder">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23121417'/%3E%3Cpath d='M16 40Q33 33 49 41V79Q33 72 16 78Z' fill='%23F3F4F1'/%3E%3Cpath d='M84 40Q67 33 51 41V79Q67 72 84 78Z' fill='%23C9CCC5'/%3E%3Cpath transform='translate(34.4 7) scale(1.3)' d='M12 3c2 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3 0-5 1-8z' fill='%23FF5A1F'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a van tool: blunt, fast, glove-friendly.
+   IDEA: the boiler data badge: dark plate, stamped GC numbers, one flame-orange tag.
+   PICTURE: the search box and its pop-up results are the picture.
+   COLOUR and TYPE: slate #121417 plate, warm paper ground, flame #FF5A1F accent; Space Grotesk numbers, Inter text.
+   LAYOUT: one column up to 720px, dark header with search, content cards below, tab bar at the foot. */
+:root{color-scheme:light dark;--bg:light-dark(#F3F4F1,#0E1013);--card:light-dark(#FFFFFF,#1A1D22);--ink:light-dark(#121417,#EEF0EC);--sub:light-dark(#555A52,#A9AEA6);--line:light-dark(#DADDD6,#2C3037);--plate:#121417;--plate2:#1E2126;--on:#F3F4F1;--flame:#FF5A1F;--flameText:light-dark(#A33A10,#FF8A5C);--tint:light-dark(#FFE6DC,#3A2217);--hit:light-dark(#FFD9C7,#5A2C16)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:'Space Grotesk',Inter,sans-serif;margin:0;line-height:1.1}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--flame);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto}
+header{background:var(--plate);color:var(--on);padding:max(18px,calc(env(safe-area-inset-top) + 8px)) max(4vw,16px) 18px;position:relative;z-index:5}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:10px;font:700 20px 'Space Grotesk',sans-serif;text-decoration:none;color:var(--on)}
+.mark{width:36px;height:36px;border-radius:10px;background:var(--flame);display:grid;place-items:center}
+.status{font-size:13px;color:#A9AEA6}
+.lbl{font-size:13px;color:#A9AEA6;display:block;margin-bottom:6px}
+.sbox{display:flex;align-items:center;gap:10px;background:#fff;color:#121417;border-radius:14px;padding:0 8px 0 14px;height:56px}
+.sbox input{border:0;outline:0;background:transparent;flex:1;font-size:17px;color:#121417;height:100%}
+.sbox:focus-within{box-shadow:0 0 0 3px var(--flame)}
+.clear{width:40px;height:40px;border-radius:20px;border:0;background:#E6E8E3;display:grid;place-items:center;cursor:pointer}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{height:40px;padding:0 16px;border-radius:20px;border:1px solid #3A3F39;background:transparent;color:var(--on);font-weight:500;font-size:14px;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--flame);border-color:var(--flame);color:#121417;font-weight:600}
+.pop{position:absolute;left:max(4vw,16px);right:max(4vw,16px);max-width:720px;margin:8px auto 0;background:var(--card);color:var(--ink);border-radius:16px;box-shadow:0 18px 40px rgba(0,0,0,.28);overflow:hidden;z-index:20}
+.pophead{display:flex;justify-content:space-between;padding:12px 16px 6px;font-size:12px;font-weight:600;color:var(--sub)}
+.row{display:flex;align-items:center;gap:12px;padding:12px 16px;text-decoration:none;border-top:1px solid var(--line);min-height:64px;width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;cursor:pointer;color:inherit}
+.row:first-child{border-top:0}
+.row[aria-selected=true],.row:hover{background:var(--tint)}
+.ava{width:40px;height:40px;flex:none;border-radius:10px;background:var(--tint);color:var(--flameText);font:700 13px 'Space Grotesk',sans-serif;display:grid;place-items:center}
+.rt{font-weight:600;font-size:15px;line-height:1.3}
+.rs{font-size:13px;color:var(--sub)}
+mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 2px;font-weight:700}
+.more{display:flex;gap:10px;align-items:center;padding:14px 16px;border-top:1px solid var(--line);background:light-dark(#F7F8F5,#15181C);font-weight:600;font-size:14px;text-decoration:none}
+main{padding:20px max(4vw,16px) 110px}
+.sec{margin-bottom:24px}
+.sech{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;gap:10px}
+.sech h2{font-size:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tile{min-height:56px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-weight:600;font-size:14px;cursor:pointer;padding:6px}
+.tile small{display:block;font-weight:400;color:var(--sub);font-size:12px}
+.empty{padding:18px 16px;color:var(--sub);font-size:14px}
+.note{font-size:13px;color:var(--sub)}
+.hero{background:var(--plate);color:var(--on);padding:4px max(4vw,16px) 22px;margin:0 calc(-1*max(4vw,16px))}
+.back{display:inline-flex;align-items:center;gap:6px;height:44px;color:var(--on);text-decoration:none;font-size:14px}
+.hero h1{font-size:clamp(28px,7vw,40px);margin:4px 0 14px}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.fact{background:var(--plate2);border-radius:12px;padding:10px 12px}
+.fact span{display:block;font-size:12px;color:#A9AEA6}
+.fact b{font:700 15px 'Space Grotesk',sans-serif}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:10px 14px;border-top:1px solid var(--line)}
+th{font-size:12px;color:var(--sub);font-weight:600;border-top:0}
+td.gc{font:700 15px 'Space Grotesk',sans-serif;white-space:nowrap}
+.doc{display:flex;align-items:center;gap:14px;padding:14px 16px;text-decoration:none;border-top:1px solid var(--line);min-height:64px}
+.doc:first-child{border-top:0}
+.doc.main{background:var(--flame);color:#121417}
+.pdf{width:40px;height:48px;flex:none;border-radius:6px;background:light-dark(#E6E8E3,#2C3037);color:var(--sub);font:700 11px 'Space Grotesk',sans-serif;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px}
+.doc.main .pdf{background:#121417;color:var(--flame)}
+.grow{flex:1}
+.btn{min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-weight:600;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.btn.pri{background:var(--flame);border-color:var(--flame);color:#121417}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13px}
+.btn.warn{color:light-dark(#A32D2D,#F09595)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+.pages{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px}
+.pg{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 6px 0 14px;border-radius:20px;border:1px solid var(--line);background:var(--bg);font-weight:600;font-size:14px}
+.pg b{font-family:'Space Grotesk',sans-serif;color:var(--flameText)}
+.pg button{width:32px;height:32px;border:0;border-radius:16px;background:transparent;cursor:pointer;color:var(--sub)}
+.form{display:grid;gap:12px;padding:16px}
+.form label{font-size:13px;font-weight:600;display:grid;gap:6px}
+.form input,.form select,.form textarea{min-height:48px;border-radius:10px;border:1px solid var(--line);background:var(--bg);padding:10px 12px;font-size:16px;width:100%}
+.inline{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 14px}
+.inline input{min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);padding:8px 12px;font-size:16px}
+.msg{padding:10px 16px;font-size:14px;color:var(--flameText)}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:6px 0 max(6px,env(safe-area-inset-bottom));z-index:10}
+nav.tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--sub);text-decoration:none;min-width:88px;padding:6px 0}
+nav.tabs a[aria-current=page]{color:var(--flameText);font-weight:700}
+.src{font-size:12px;color:var(--sub);padding:10px 16px;border-top:1px solid var(--line);overflow-wrap:anywhere}
+@media(max-width:420px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:no-preference){.pop{animation:drop .14s ease-out}@keyframes drop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <a class="brand" href="#home"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#2A2E35"/><path d="M16 40Q33 33 49 41V79Q33 72 16 78Z" fill="#F3F4F1"/><path d="M84 40Q67 33 51 41V79Q67 72 84 78Z" fill="#C9CCC5"/><path transform="translate(34.4 7) scale(1.3)" d="M12 3c2 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3 0-5 1-8z" fill="#FF5A1F"/></svg>Manual finder</a>
+      <span class="status" id="status">Loading your manuals…</span>
+    </div>
+    <label class="lbl" for="q">Search by make, model or GC number</label>
+    <div class="sbox">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B6058" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="q" type="search" autocomplete="off" placeholder="e.g. Greenstar 4000 or 47 800 30" role="combobox" aria-expanded="false" aria-controls="pop" aria-autocomplete="list">
+      <button class="clear" id="clear" aria-label="Clear search" hidden><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#121417" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="chips" role="group" aria-label="Search in">
+      <button class="chip" data-f="all" aria-pressed="true">All</button>
+      <button class="chip" data-f="make" aria-pressed="false">Make</button>
+      <button class="chip" data-f="model" aria-pressed="false">Model</button>
+      <button class="chip" data-f="gc" aria-pressed="false">GC no.</button>
+    </div>
+  </div>
+  <div class="pop" id="pop" role="listbox" hidden></div>
+</header>
+<main class="wrap" id="view"></main>
+<nav class="tabs" aria-label="Sections">
+  <a href="#home" data-tab="home"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search</a>
+  <a href="#saved" data-tab="saved"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg>My manuals</a>
+  <a href="#add" data-tab="add"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add boiler</a>
+</nav>
+<input type="file" id="file" accept="application/pdf,.pdf" hidden>
+
+<script id="data" type="application/json">
+{"brands":[
+{"id":"wb","name":"Worcester Bosch","ab":"WB","domain":"worcester-bosch.co.uk"},
+{"id":"va","name":"Vaillant","ab":"VA","domain":"vaillant.co.uk","page":"https://professional.vaillant.co.uk/for-installers/products/ecotec-plus-825-832-835-838-and-938-3648.html"},
+{"id":"bx","name":"Baxi","ab":"BX","domain":"baxi.co.uk"},
+{"id":"id","name":"Ideal","ab":"ID","domain":"idealheating.com","page":"https://idealheating.com/user-guides"},
+{"id":"gw","name":"Glow-worm","ab":"GW","domain":"glow-worm.co.uk","page":"https://www.glow-worm.co.uk/homeowner/repairs-and-servicing/literature/"},
+{"id":"vi","name":"Viessmann","ab":"VI","domain":"viessmann.co.uk","page":"https://www.viessmann.co.uk/en/products/gas/vitodens.html"}
+],
+"boilers":[
+{"id":"w1","b":"wb","r":"Greenstar 4000 combi","t":"Combi","v":[["25 C NG","47-800-30"],["25 C LPG","47-800-31"],["30 C LPG","47-800-33"]],"d":[["Installation & maintenance","https://installer.worcester-bosch.co.uk/support/literature/download/6720891161"]],"s":"https://www.worcester-bosch.co.uk/spares/category/boilers"},
+{"id":"w2","b":"wb","r":"Greenstar 4000 system","t":"System","v":[["12 S NG","41-800-07"],["15 S NG","41-800-09"],["18 S NG","41-800-11"],["21 S NG","41-800-13"],["24 S NG","41-800-15"],["12 S LPG","41-800-08"],["15 S LPG","41-800-10"],["18 S LPG","41-800-12"],["21 S LPG","41-800-14"],["24 S LPG","41-800-16"]],"d":[["Installation & maintenance","https://worcester-bosch.co.uk/support/literature/download/6720891162"]],"s":"https://www.worcester-bosch.co.uk/spares/category/boilers"},
+{"id":"w3","b":"wb","r":"Greenstar 1000 combi","t":"Combi","v":[["24 C NG","47-800-38"],["30 C NG","47-800-39"]],"d":[],"s":"https://www.worcester-bosch.co.uk/spares/category/boilers"},
+{"id":"w4","b":"wb","r":"Greenstar 2000 combi","t":"Combi","v":[["25 C NG","47-800-26"],["25 C LPG","47-800-27"],["30 C NG","47-800-28"],["30 C LPG","47-800-29"]],"d":[],"s":"https://www.worcester-bosch.co.uk/spares/category/boilers"},
+{"id":"w5","b":"wb","r":"Greenstar 8000+ combi","t":"Combi","v":[["32 C NG","47-800-44"],["36 C NG","47-800-45"],["40 C NG","47-800-46"],["45 C NG","47-800-47"],["50 C NG","47-800-48"],["32 C LPG","47-800-51"],["36 C LPG","47-800-52"],["40 C LPG","47-800-53"],["45 C LPG","47-800-54"],["50 C LPG","47-800-55"]],"d":[],"s":"https://www.worcester-bosch.co.uk/spares/category/boilers"},
+{"id":"w6","b":"wb","r":"Greenstar 8000+ Style combi","t":"Combi","v":[["32 CB NG","47-800-49"],["36 CB NG","47-800-50"]],"d":[],"s":"https://www.worcester-bosch.co.uk/spares/category/boilers"},
+{"id":"w7","b":"wb","r":"Greenstar 8000+ regular","t":"Regular","v":[["30 R NG","41-800-29"],["35 R NG","41-800-30"],["40 R NG","41-800-31"],["45 R NG","41-800-32"],["50 R NG","41-800-33"],["30 R LPG","41-800-36"],["35 R LPG","41-800-37"],["40 R LPG","41-800-38"],["45 R LPG","41-800-39"],["50 R LPG","41-800-40"]],"d":[],"s":"https://www.worcester-bosch.co.uk/spares/category/boilers"},
+{"id":"w8","b":"wb","r":"Greenstar i combi ErP (25i, 30i)","t":"Combi","v":[["25i NG","47-406-60"],["30i NG","47-406-62"],["25i LPG","47-406-61"],["30i LPG","47-406-63"]],"d":[["Installation, commissioning & servicing","https://worcester-bosch.co.uk/support/literature/download/6720806944"]],"s":"https://worcester-bosch.co.uk/support/literature/download/6720806944"},
+{"id":"w9","b":"wb","r":"Greenstar i System compact","t":"System","v":[["27i NG","41-406-58"],["27i LPG","41-406-59"],["30i NG","41-406-60"],["30i LPG","41-406-61"]],"d":[],"s":"https://www.worcester-bosch.co.uk/spares/category/boilers"},
+{"id":"w10","b":"wb","r":"Greenstar CDi Compact combi ErP","t":"Combi","v":[["28CDi NG","47-406-77"],["28CDi LPG","47-406-78"],["32CDi LPG","47-406-80"],["36CDi NG","47-406-81"],["36CDi LPG","47-406-82"]],"d":[],"s":"https://www.worcester-bosch.co.uk/spares/category/boilers"},
+{"id":"w11","b":"wb","r":"Greenstar CDi Classic combi ErP","t":"Combi","v":[["29CDi NG","47-406-65"],["34CDi NG","47-406-67"],["38CDi NG","47-406-69"],["42CDi NG","47-406-71"],["29CDi LPG","47-406-66"],["34CDi LPG","47-406-68"],["38CDi LPG","47-406-70"],["42CDi LPG","47-406-72"]],"d":[],"s":"https://www.dhsspares.co.uk/userfiles/boiler_manuals/WOR815.pdf"},
+{"id":"w12","b":"wb","r":"Greenstar CDi combi (pre-ErP)","t":"Combi","v":[["29CDi NG","47-406-34"],["34CDi NG","47-406-36"],["38CDi NG","47-406-38"],["42CDi NG","47-406-10"],["29CDi LPG","47-406-35"],["34CDi LPG","47-406-37"],["38CDi LPG","47-406-39"],["42CDi LPG","47-406-11"]],"d":[],"s":"https://www.dhsspares.co.uk/userfiles/boiler_manuals/WOR121.pdf"},
+{"id":"w13","b":"wb","r":"Greenstar Highflow 440/550 CDi ErP","t":"Storage combi","v":[["440CDi NG","47-406-89"],["550CDi NG","47-406-91"],["440CDi LPG","47-406-90"],["550CDi LPG","47-406-92"]],"d":[["Installation, commissioning & servicing","https://alpha.worcester-bosch.co.uk/support/literature/download/6720818077"]],"s":"https://alpha.worcester-bosch.co.uk/support/literature/download/6720818077"},
+{"id":"w14","b":"wb","r":"Greenstar Highflow 440/550 CDi (2010)","t":"Storage combi","v":[["440CDi NG","47-406-24"],["550CDi NG","47-406-25"],["440CDi LPG","47-406-26"],["550CDi LPG","47-406-27"]],"d":[["Installation, commissioning & servicing","https://alpha.worcester-bosch.co.uk/support/literature/download/release/8716115219/12532"]],"s":"https://alpha.worcester-bosch.co.uk/support/literature/download/release/8716115219/12532"},
+{"id":"w15","b":"wb","r":"Greenstar Ri ErP+ (9–24kW)","t":"Regular","v":[["9Ri NG","41-406-74"],["12Ri NG","41-406-75"],["15Ri NG","41-406-76"],["18Ri NG","41-406-77"],["21Ri NG","41-406-78"],["24Ri NG","41-406-79"]],"d":[["Installation, commissioning & servicing","https://contracts.worcester-bosch.co.uk/support/literature/download/6720821670"]],"s":"https://www.worcester-bosch.co.uk/spares/category/boilers"},
+{"id":"w16","b":"wb","r":"Greenstar Ri Compact (27, 30kW)","t":"Regular","v":[["27Ri NG","41-406-54"],["27Ri LPG","41-406-55"],["30Ri NG","41-406-56"],["30Ri LPG","41-406-57"]],"d":[],"s":"https://www.worcester-bosch.co.uk/spares/category/boilers"},
+{"id":"w17","b":"wb","r":"Greenstar 24 / 28 / 30 combi (2014)","t":"Combi","v":[["24kW NG","47-406-54"],["28kW NG","47-406-56"],["30kW NG","47-406-64"]],"d":[["Installation, commissioning & servicing","https://worcester-bosch.co.uk/support/literature/download/6720811922"]],"s":"https://worcester-bosch.co.uk/support/literature/download/6720811922"},
+{"id":"w18","b":"wb","r":"Greenstar ZWBR (early)","t":"Combi","v":[["ZWBR 7-25 A23 NG","47-311-44"],["ZWBR 11-25 A31 LPG","47-311-45"]],"d":[["Installation & servicing","https://worcester-bosch.co.uk/support/document/download/6720610096"]],"s":"https://worcester-bosch.co.uk/support/document/download/6720610096"},
+{"id":"w19","b":"wb","r":"Greenstar FS CDi regular","t":"Regular","v":[["42CDi NG","41-406-04"],["30CDi LPG","41-406-05"],["42CDi LPG","41-406-06"]],"d":[],"s":"https://camdocs.camden.gov.uk/CMWebDrawer/Record/7379613/file/document"},
+{"id":"w20","b":"wb","r":"Greenstar CDi Classic regular ErP (30, 40)","t":"Regular","v":[],"d":[["Installation, commissioning & servicing","https://worcester-bosch.co.uk/support/literature/download/6720815723"]],"s":""},
+{"id":"v1","b":"va","r":"ecoTEC plus 825 / 832 / 835 / 838 / 938","t":"Combi","v":[["825","47-044-83"],["832","47-044-84"],["832 LPG","47-044-85"],["835","47-044-82"],["838","47-044-86"],["938","47-044-87"]],"d":[["Product page & downloads","https://professional.vaillant.co.uk/for-installers/products/ecotec-plus-825-832-835-838-and-938-3648.html"]],"s":"https://professional.vaillant.co.uk/for-installers/products/ecotec-plus-825-832-835-838-and-938-3648.html"},
+{"id":"v2","b":"va","r":"ecoTEC plus (2023 on) 826 / 832 / 836 / 840 / 940","t":"Combi","v":[["826 (VUW 20/26CS/1-5)","47-044-92"],["832 (VUW 25/32CS/1-5)","47-044-93"],["836 (VUW 30/36CS/1-5)","47-044-94"],["840 (VUW 30/40CS/1-5)","47-044-95"],["940 (VUI 30/40CS/1-5)","47-044-96"]],"d":[["Installation & maintenance","https://www.vaillant.co.uk/product-images/0020308118-05.pdf.pdf"],["Operating instructions","https://www.vaillant.co.uk/product-images/0020308119-03.pdf.pdf"]],"s":"https://www.vaillant.co.uk/product-images/0020308119-03.pdf.pdf"},
+{"id":"v3","b":"va","r":"ecoTEC plus (2023 on) 610–635 system","t":"System","v":[["610","41-694-45"],["615","41-694-46"],["620","41-694-47"],["625","41-694-48"],["630","41-694-49"],["635","41-694-50"]],"d":[["Installation & maintenance","https://www.vaillant.co.uk/product-images/0020308118-05.pdf.pdf"],["Operating instructions","https://www.vaillant.co.uk/product-images/0020308119-03.pdf.pdf"]],"s":"https://www.vaillant.co.uk/product-images/0020308119-03.pdf.pdf"},
+{"id":"v4","b":"va","r":"ecoTEC plus open vent (VU ..6/6-5 OV)","t":"Regular","v":[["12kW (VU 126)","41-044-71"],["15kW (VU 156)","41-044-72"],["18kW (VU 186)","41-044-73"],["24kW (VU 246)","41-044-74"],["30kW (VU 306)","41-044-75"],["35kW (VU 356)","41-044-76"]],"d":[["Installation & maintenance","https://vaillant.co.uk/product-images/0020238195-08.pdf.pdf"],["Operating instructions","https://www.vaillant.co.uk/product-images/0020200872-00.pdf.pdf"]],"s":"https://www.vaillant.co.uk/product-images/0020200872-00.pdf.pdf"},
+{"id":"v5","b":"va","r":"ecoTEC pro 24 / 28 / 30","t":"Combi","v":[["pro 24","47-044-88"]],"d":[],"s":"https://www.vaillant.co.uk/downloads/case-studies-1/erp-data-labels-and-fiches/combi/ecotec-pro-28-lpg/ecotec-pro-28-lpg-label-532896.pdf"},
+{"id":"v6","b":"va","r":"ecoTEC exclusive 835 / 843","t":"Combi","v":[["835","47-044-66"],["843","47-044-67"]],"d":[],"s":"https://professional.vaillant.co.uk/downloads/product-brochures/master-brochure-domestic-mar-2024-web-pages-2681468.pdf"},
+{"id":"v7","b":"va","r":"ecoTEC plus & pro (2004–2006 range)","t":"Combi & regular","v":[["plus 612","41-044-44"],["plus 615","41-044-45"],["plus 618","41-044-46"],["plus 624","41-044-47"],["plus 630","41-044-48"],["plus 637","41-044-49"],["plus 824","47-044-31"],["plus 831","47-044-32"],["plus 837","47-044-33"],["pro 28","47-044-30"],["pro 24","47-044-36"]],"d":[["Installation & servicing (2006)","https://professional.vaillant.co.uk/downloads/z/ecotec/ecotec-installation-servicing-2006-261447.pdf"],["Installation & servicing (2004)","https://professional.vaillant.co.uk/downloads/z/ecotec/ecotec-installation-servicing-2004-261446.pdf"]],"s":"https://www.dhsspares.co.uk/userfiles/Boiler_Manuals/VAI047.pdf"},
+{"id":"v8","b":"va","r":"ecoFIT sustain 825 / 830 / 835","t":"Combi","v":[["825 (VUW 256/6-3)","47-044-71"],["830 (VUW 306/6-3)","47-044-72"],["835 (VUW 356/6-3)","47-044-73"]],"d":[],"s":"https://www.fife.gov.uk/__data/assets/pdf_file/0026/253466/ecofit-sustain-combi-operating-instructions-1943532.pdf"},
+{"id":"v9","b":"va","r":"ecoFIT pure 825 – 835","t":"Combi","v":[],"d":[["Installation & maintenance","https://www.vaillant.co.uk/product-images/0020230531-07.pdf.pdf"],["Operating instructions","https://www.vaillant.co.uk/product-images/0020230532-03.pdf.pdf"]],"s":""},
+{"id":"b1","b":"bx","r":"600 Combi 2 (624, 630, 636)","t":"Combi","v":[],"d":[["Product page & manuals","https://www.baxi.co.uk/professional/products/boilers/combi-boilers/baxi-600-combi-2"]],"s":""},
+{"id":"b2","b":"bx","r":"800 Combi 2 (824, 830, 836)","t":"Combi","v":[],"d":[["Product page & manuals","https://baxi.co.uk/professional/products/boilers/combi-boilers/baxi-800-combi-2"]],"s":""},
+{"id":"b3","b":"bx","r":"Baxi Combi 624 / 630 (first 600 range)","t":"Combi","v":[["624","47-077-28"],["630","47-077-29"]],"d":[],"s":"https://www.manualslib.com/manual/3159547/Baxi-7682194.html"},
+{"id":"b4","b":"bx","r":"Baxi 124 / 128 Combi","t":"Combi","v":[["124","47-077-25"],["128","47-077-26"]],"d":[],"s":"https://dhsspares.co.uk/userfiles/boiler_manuals/BAX623.pdf"},
+{"id":"b5","b":"bx","r":"Baxi 200 / 400 Combi (224, 228, 424, 428)","t":"Combi","v":[],"d":[["Installation & service","https://www.baxi.co.uk/-/media/websites/baxiuk/files/product-literature/baxi-200-combi/baxi_200_and_400_combi_installation_and_service_manual.pdf?la=en"]],"s":""},
+{"id":"b6","b":"bx","r":"Baxi 600 Heat (613–630)","t":"Regular","v":[["613","41-470-66"],["616","41-470-67"],["619","41-470-68"],["625","41-470-69"],["630","41-470-70"]],"d":[],"s":"https://checkout.mkm.com/content/products/pdf/44527/baxi-616-16kw-heat-only-boiler-l031925_Brochure_1.pdf"},
+{"id":"b7","b":"bx","r":"Baxi 800 Heat 825","t":"Regular","v":[["825","41-470-79"]],"d":[],"s":"https://checkout.mkm.com/content/products/pdf/44781/baxi-825-25kw-heat-only-boiler-l048239_Installation_1.pdf"},
+{"id":"b8","b":"bx","r":"EcoBlue System ErP","t":"System","v":[["12","41-470-23"],["15","41-470-24"],["18","41-470-25"],["24","41-470-26"],["28","41-470-27"],["32","41-470-28"]],"d":[["Installation & service","https://www.baxi.co.uk/archive/-/media/websites/baxiuk/files/product-literature/baxi-ecoblue-system/baxi_ecoblue_system_installation_and_service_manual.pdf"]],"s":"https://www.baxi.co.uk/archive/-/media/websites/baxiuk/files/product-literature/baxi-ecoblue-system/baxi_ecoblue_system_installation_and_service_manual.pdf"},
+{"id":"b9","b":"bx","r":"EcoBlue Heat ErP","t":"Regular","v":[["21","41-470-32"],["24","41-470-33"]],"d":[["Installation & service","https://www.baxi.co.uk/archive/-/media/websites/baxiuk/files/product-literature/baxi-ecoblue-heat/baxi_ecoblue_heat_installation_and_service_manual.pdf"]],"s":"https://www.baxi.co.uk/archive/-/media/websites/baxiuk/files/product-literature/baxi-ecoblue-heat/baxi_ecoblue_heat_installation_and_service_manual.pdf"},
+{"id":"b10","b":"bx","r":"Baxi Combi 80 (Eco, Maxflue)","t":"Combi","v":[["80 Eco","47-075-05"],["80 Maxflue","47-075-07"]],"d":[],"s":"https://dhsspares.co.uk/userfiles/Boiler_Manuals/BAX187.pdf"},
+{"id":"b11","b":"bx","r":"Assure Combi 25 / 30 / 36","t":"Combi","v":[],"d":[],"s":""},
+{"id":"i1","b":"id","r":"Logic Combi 24 / 30 / 35","t":"Combi","v":[["24","47-348-56"],["30","47-348-57"],["35","47-348-58"]],"d":[],"s":"https://inspectapedia.com/heat/Logic-Combi-24-30-35-Installation-Manual.pdf"},
+{"id":"i2","b":"id","r":"Logic+ Combi 24 / 30 / 35","t":"Combi","v":[["24","47-348-65"],["30","47-348-66"],["35","47-348-67"]],"d":[],"s":"https://www.heatingspareparts.com/content/docs/ideal_47-348-65_logic%20plus%20combi%20user%20installation%20instructions.pdf"},
+{"id":"i3","b":"id","r":"Logic Combi ES 24 / 30 / 35","t":"Combi","v":[["ES24","47-349-01"],["ES30","47-349-02"],["ES35","47-349-03"]],"d":[],"s":"https://inspectapedia.com/heat/Logic-Combi-ES-24-30-35-Installation-Manual.pdf"},
+{"id":"i4","b":"id","r":"Logic Max Combi2 C24 / C30 / C35","t":"Combi","v":[["C24","47-349-99"],["C30","47-387-01"],["C35","47-387-02"]],"d":[["Installation & servicing","https://idealtouch.co.uk.idealboilers.com/uploads/documents/logic-max-combi-2-installation-and-servicing-guide.pdf"],["User guide","https://voguesecret.idealboilers.com/uploads/documents/logic-max-combi-2-user-guide.pdf"]],"s":"https://manuals.plus/ideal/c24-logic-max-combi2-manual"},
+{"id":"i5","b":"id","r":"Logic Combi2 C24 / C30 / C35","t":"Combi","v":[],"d":[["Installation & servicing","https://idealtouch.co.uk.idealboilers.com/uploads/documents/236183-1I-SLogicCombi2C_Compressed.pdf"],["User guide","https://voguesecret.idealboilers.com/uploads/documents/236183-1-User-Guide-Logic-Combi2-C.pdf"]],"s":""},
+{"id":"i6","b":"id","r":"Vogue Combi C26 / C32 / C40 (first gen)","t":"Combi","v":[["C26","47-348-99"],["C32","47-348-98"],["C40","47-348-97"]],"d":[],"s":"https://www.heatingspareparts.com/content/docs/ideal_47-348-99_vogue-combi-user-guide.pdf"},
+{"id":"i7","b":"id","r":"Vogue Max Combi 26 / 32 / 40","t":"Combi","v":[["26","47-349-59"],["32","47-349-60"],["40","47-349-61"]],"d":[["Installation & servicing","https://voguesecret.idealboilers.com/uploads/documents/Vogue-Max-Combi-Installation-Servicing-222378-1_lowres-REDEUCED.pdf"],["User guide","https://mail.idealboilers.com/uploads/documents/219004-2-vogue-max-combi-user-guide.pdf"]],"s":"https://mail.idealboilers.com/uploads/documents/219004-2-vogue-max-combi-user-guide.pdf"},
+{"id":"i8","b":"id","r":"Vogue Max System 15 / 18 / 26 / 32","t":"System","v":[],"d":[["Installation & servicing","https://idealheating.com/_gatsby/file/b65391878dea5c36d9f70cf4e105dbb4/219005_A11_WEB.pdf"]],"s":""},
+{"id":"i9","b":"id","r":"Logic+ Combi2 C24 / C30 / C35","t":"Combi","v":[],"d":[],"s":""},
+{"id":"i10","b":"id","r":"Independent+ Combi C24 / C30 / C35 (2014)","t":"Combi","v":[["C24","47-348-85"],["C30","47-348-86"],["C35","47-348-87"]],"d":[],"s":"https://www.geniushub.co.uk/wp-content/uploads/hg-valve-checker/boiler-manuals/Ideal_Independent_%20Combi_%20C24_C30_C35.pdf"},
+{"id":"i11","b":"id","r":"Independent Combi C24 / C30 / C35","t":"Combi","v":[["C24","47-348-68"],["C30","47-348-69"],["C35","47-348-70"]],"d":[],"s":"https://www.heatingspareparts.com/content/docs/ideal_47-348-68_installation%20instructions.pdf"},
+{"id":"i12","b":"id","r":"i combi 24 / 30 / 35","t":"Combi","v":[["24","47-348-82"],["30","47-348-83"],["35","47-348-84"]],"d":[],"s":"https://dhsspares.co.uk/userfiles/boiler_manuals/IDE515.pdf"},
+{"id":"i13","b":"id","r":"Logic System 15 / 18 / 24 / 30","t":"System","v":[["15","41-750-24"],["18","41-750-25"],["24","41-750-26"],["30","41-750-27"]],"d":[],"s":"https://dhsspares.co.uk/userfiles/boiler_manuals/IDE437.pdf"},
+{"id":"i14","b":"id","r":"Logic+ System S15 / S18 / S24 / S30","t":"System","v":[["S15","41-750-29"],["S18","41-750-30"],["S24","41-750-31"],["S30","41-750-32"]],"d":[["Installation & servicing (2019)","https://idealtouch.idealboilers.com/uploads/documents/215353-8-logic-plus-system-installation-and-servicing.pdf"]],"s":"https://www.heatingspareparts.com/content/docs/ideal_41-750-29_user%20installation%20and%20service.pdf"},
+{"id":"i15","b":"id","r":"Vogue System S15 / S18 / S26 / S32","t":"System","v":[["S15","41-750-88"],["S18","41-750-89"],["S26","41-750-90"],["S32","41-750-91"]],"d":[],"s":"https://manualshive.com/en/manual/ideal/vogue-s15/3745210?page=3"},
+{"id":"i16","b":"id","r":"Logic+ System2 S15 / S18 / S24 / S30","t":"System","v":[],"d":[["Installation & servicing","https://idealheating.com/_gatsby/file/59f1cc9734a302daf7bda9c6307c2b5c/LOGICPLUS-System2-Installation-Servicing-09.2024_UIN_237663_A03.pdf"]],"s":""},
+{"id":"i17","b":"id","r":"Logic Max System S15 / S18 / S24 / S30","t":"System","v":[],"d":[["Product page","https://idealboilers.com/installers/products/logic-max-system"]],"s":""},
+{"id":"i18","b":"id","r":"Logic Max Heat2 H12 – H30","t":"Regular","v":[],"d":[["User guide","https://idealtouch.idealboilers.com/uploads/documents/logic-max-heat-2-user-guide.pdf"],["Product page","https://idealboilers.com/installers/products/logic-max-heat"]],"s":""},
+{"id":"i19","b":"id","r":"Logic Heat H12 – H30","t":"Regular","v":[],"d":[["User guide","https://idealtouch.co.uk.idealboilers.com/uploads/documents/215354-10-logic-heat-user-guide.pdf"]],"s":""},
+{"id":"i20","b":"id","r":"Logic Combi ESP1 24 / 30 / 35","t":"Combi","v":[],"d":[["Installation & servicing","https://idealheating.com/_gatsby/file/7ed2d1bbc18ba01e26d8afbedbb8a39a/222353_A07_WEB.pdf"]],"s":""},
+{"id":"i21","b":"id","r":"Logic Code Combi ESP1 26 / 33 / 38","t":"Combi","v":[],"d":[["Installation & servicing","https://mail.idealboilers.com/uploads/documents/222364-2_inst.pdf"]],"s":""},
+{"id":"i22","b":"id","r":"i-mini2 C24 / C30 / C35","t":"Combi","v":[],"d":[["Installation & servicing","https://idealheating.com/_gatsby/file/159999dfe762f72859fc13e8b5c2bb36/I-MINI2%20INSTALL%20GUIDE.pdf"],["User guide","https://idealheating.com/_gatsby/file/be231ef6a3575f86a1c53cbff837000f/I-MINI2%20USER%20GUIDE.pdf"]],"s":""},
+{"id":"i23","b":"id","r":"Exclusive2 24 / 30 / 35","t":"Combi","v":[],"d":[],"s":""},
+{"id":"g1","b":"gw","r":"Energy combi 25c / 30c / 35c","t":"Combi","v":[["25c","47-019-24"],["30c","47-019-25"],["35c","47-019-26"]],"d":[],"s":"https://cdn.shopify.com/s/files/1/2450/0607/files/Glow-worm_Energy_Operating_Instructions.pdf"},
+{"id":"g2","b":"gw","r":"Ultimate3 combi 30c / 35c","t":"Combi","v":[["30c","47-019-55"],["35c","47-019-57"]],"d":[],"s":"https://manualmachine.com/glowworm/ultimate30c35c/28020876-operating-instructions-0020239565_01--1507"},
+{"id":"g3","b":"gw","r":"Ultimate combi 30c / 35c (2013)","t":"Combi","v":[["30c","47-019-20"],["35c","47-019-21"]],"d":[],"s":"https://www.heatingspareparts.com/content/docs/glowworm_47-019-20_user%20instructions.pdf"},
+{"id":"g4","b":"gw","r":"Sustain combi 25c / 30c / 35c","t":"Combi","v":[],"d":[["Installation & maintenance","https://glow-worm.co.uk/glow-worm/to-be-reviewed/sustain/sustain-combi-installation-569134.pdf"]],"s":""},
+{"id":"g5","b":"gw","r":"Energy7 combi 25c / 30c / 35c","t":"Combi","v":[],"d":[],"s":""},
+{"id":"g6","b":"gw","r":"Betacom4 combi","t":"Combi","v":[],"d":[],"s":""},
+{"id":"g7","b":"gw","r":"Compact combi","t":"Combi","v":[],"d":[],"s":""},
+{"id":"x1","b":"vi","r":"Vitodens 100-W combi (B1KF)","t":"Combi","v":[["B1KF","47-819-50"],["B1KF","47-819-51"],["B1KF","47-819-52"]],"d":[],"s":"https://www.plumbnation.co.uk/documents/viessmann-vitodens-100-w-gas-boiler-installation-guide.pdf"},
+{"id":"x2","b":"vi","r":"Vitodens 100-W system (B1HF)","t":"System","v":[["B1HF","41-819-48"],["B1HF","41-819-49"],["B1HF","41-819-50"],["B1HF","41-819-51"]],"d":[],"s":"https://www.plumbnation.co.uk/documents/viessmann-vitodens-100-w-gas-boiler-installation-guide.pdf"},
+{"id":"x3","b":"vi","r":"Vitodens 100-W heat only (B1GA)","t":"Regular","v":[["B1GA","41-819-56"]],"d":[["Installation & service","https://www.viessmann.co.uk/content/dam/public-brands/gb/pdf/instructions/Vitodens%20100-W%20heat%20only%20installation%20instructions.pdf"]],"s":"https://www.viessmann.co.uk/content/dam/public-brands/gb/pdf/instructions/Vitodens%20100-W%20heat%20only%20installation%20instructions.pdf"},
+{"id":"x4","b":"vi","r":"Vitodens 050-W (B0KA, B0HA)","t":"Combi & system","v":[["B0KA combi","47-819-55"],["B0KA combi","47-819-57"],["B0KA combi","47-819-58"],["B0KA-M combi","47-819-56"],["B0HA system","41-819-63"],["B0HA system","41-819-64"]],"d":[["Product page","https://viessmann.co.uk/en/products/gas/vitodens-050-w.html"]],"s":"https://checkout.mkm.com/content/products/pdf/44761/viessmann-vitodens-050-w-combi-boiler-25kw-l047558_Installation_1.pdf"},
+{"id":"x5","b":"vi","r":"Vitodens 050-W (BPJC)","t":"Combi","v":[["29kW","47-819-31"],["35kW","47-819-32"]],"d":[],"s":"https://res.cloudinary.com/wholesale-plumbing/image/upload/Documents2/Viessmann_7826_471_Catalog.pdf"},
+{"id":"x6","b":"vi","r":"Vitodens 050-W (BPJD)","t":"Combi","v":[["BPJD","47-819-38"],["BPJD","47-819-39"]],"d":[],"s":"https://iheat.co.uk/pdf/viessmann-vitodens-050-w-service-instructions.pdf"},
+{"id":"x7","b":"vi","r":"Vitodens 025-W (BPKB)","t":"Combi","v":[["BPKB-24","47-819-64"],["BPKB-28","47-819-65"]],"d":[],"s":"https://www.manualslib.com/manual/3685252/Viessmann-Vitodens-025-W.html"},
+{"id":"x8","b":"vi","r":"Vitodens 100-W (WB1B, 2008)","t":"Combi & system","v":[["WB1B combi","47-819-18"],["WB1B combi","47-819-19"],["WB1B combi","47-819-20"],["WB1B system","41-819-12"],["WB1B system","41-819-13"],["WB1B system","41-819-14"]],"d":[],"s":"https://www.heatingspareparts.com/content/docs/viessmann_41-819-18_compressed_wb1b%20install%20service.pdf"},
+{"id":"x9","b":"vi","r":"Vitodens 200-W","t":"Combi & system","v":[],"d":[],"s":""}
+]}
+</script>
+
+<script>
+{
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const BR = Object.fromEntries(DATA.brands.map(b => [b.id, b]));
+const $ = s => document.querySelector(s);
+const view = $('#view'), q = $('#q'), pop = $('#pop'), clearBtn = $('#clear'), statusEl = $('#status'), fileIn = $('#file');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const digits = s => String(s || '').replace(/\D/g, '');
+const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9+]+/g, ' ').trim();
+const safeUrl = u => /^https:\/\//.test(u || '') || /^\/_blob\//.test(u || '') ? u : '';
+const google = s => 'https://www.google.com/search?q=' + encodeURIComponent(s);
+
+let filter = 'all', sel = -1, results = [];
+let custom = {};   // id -> custom boiler from db
+let mine = {};     // id -> saved data (manuals, pages, note)
+let idb = null;
+const writing = {};
+
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+
+function allBoilers() {
+  const list = DATA.boilers.map(b => ({ ...b, make: BR[b.b].name, ab: BR[b.b].ab, custom: false }));
+  for (const [id, c] of Object.entries(custom)) {
+    list.push({ id, b: '', make: c.make || 'Other', ab: (c.make || '?').slice(0, 2).toUpperCase(), r: c.range || 'Unnamed boiler', t: c.type || '', v: (c.gcs || []).map(g => [g.label || '', g.gc || '']), d: [], s: '', custom: true });
+  }
+  return list;
+}
+function byId(id) { return allBoilers().find(b => b.id === id); }
+
+function search(raw) {
+  const text = raw.trim();
+  if (!text) return [];
+  const qd = digits(text), qn = norm(text);
+  const gcMode = filter === 'gc' || (filter === 'all' && qd.length >= 3 && qd.length >= text.replace(/[\s-]/g, '').length - 0);
+  const out = [];
+  for (const b of allBoilers()) {
+    if (gcMode) {
+      if (qd.length < 2) continue;
+      const hits = b.v.filter(v => digits(v[1]).includes(qd));
+      if (hits.length) out.push({ b, hits, score: hits.some(v => digits(v[1]) === qd) ? 0 : 1 });
+      continue;
+    }
+    const make = norm(b.make), model = norm(b.r + ' ' + b.v.map(v => v[0]).join(' '));
+    const hay = filter === 'make' ? make : filter === 'model' ? model : make + ' ' + model + ' ' + norm(b.t);
+    const words = qn.split(' ').filter(Boolean);
+    if (words.length && words.every(w => hay.includes(w))) {
+      out.push({ b, hits: [], score: (norm(b.r).startsWith(words[0]) || make.startsWith(words[0])) ? 0 : 1 });
+    }
+  }
+  out.sort((a, z) => a.score - z.score || a.b.make.localeCompare(z.b.make) || a.b.r.localeCompare(z.b.r));
+  return out;
+}
+
+function hl(text, raw, gc) {
+  const s = String(text);
+  if (gc) {
+    const qd = digits(raw); if (!qd) return esc(s);
+    // highlight matching digits inside a formatted GC like 47-800-30
+    const map = []; for (let i = 0; i < s.length; i++) if (/\d/.test(s[i])) map.push(i);
+    const at = digits(s).indexOf(qd); if (at < 0) return esc(s);
+    const st = map[at], en = map[at + qd.length - 1] + 1;
+    return esc(s.slice(0, st)) + '<mark>' + esc(s.slice(st, en)) + '</mark>' + esc(s.slice(en));
+  }
+  const w = norm(raw).split(' ').filter(x => x.length > 1).sort((a, b) => b.length - a.length)[0];
+  if (!w) return esc(s);
+  const i = s.toLowerCase().indexOf(w);
+  return i < 0 ? esc(s) : esc(s.slice(0, i)) + '<mark>' + esc(s.slice(i, i + w.length)) + '</mark>' + esc(s.slice(i + w.length));
+}
+
+function renderPop() {
+  const raw = q.value;
+  clearBtn.hidden = !raw;
+  results = search(raw);
+  if (!raw.trim()) { closePop(); return; }
+  const gc = results.some(r => r.hits.length);
+  const shown = results.slice(0, 8);
+  sel = Math.min(sel, shown.length - 1);
+  let h = `<div class="pophead"><span>${results.length ? results.length + (gc ? ' GC number match' : ' boiler') + (results.length === 1 ? '' : (gc ? 'es' : 's')) : 'No matches in the list'}</span><span>${esc(filterName())}</span></div>`;
+  h += shown.map((r, i) => {
+    const b = r.b, sub = r.hits.length
+      ? r.hits.slice(0, 2).map(v => 'GC ' + hl(v[1], raw, true) + (v[0] ? ' · ' + esc(v[0]) : '')).join('<br>')
+      : esc(b.t) + (b.v.length ? ' · ' + b.v.length + ' GC no.' : '') + (mine[b.id]?.manuals?.length ? ' · saved' : '');
+    return `<button class="row" role="option" id="opt${i}" aria-selected="${i === sel}" data-go="${esc(b.id)}"><span class="ava">${esc(b.ab)}</span><span class="grow"><span class="rt">${esc(b.make)} ${hl(b.r, raw, false)}</span><br><span class="rs">${sub}</span></span></button>`;
+  }).join('');
+  h += `<a class="more" href="${esc(google(raw + ' boiler installation manual pdf'))}" target="_blank" rel="noopener"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><span class="grow">Not here? Search the web for “${esc(raw.trim())}” manual</span></a>`;
+  pop.innerHTML = h;
+  pop.hidden = false;
+  q.setAttribute('aria-expanded', 'true');
+  q.setAttribute('aria-activedescendant', sel >= 0 ? 'opt' + sel : '');
+}
+function closePop() { pop.hidden = true; q.setAttribute('aria-expanded', 'false'); sel = -1; }
+function filterName() { return { all: 'All', make: 'Makes', model: 'Models', gc: 'GC numbers' }[filter]; }
+
+function remember(id) { const rec = store.get('mf_recent', []).filter(x => x !== id); rec.unshift(id); store.set('mf_recent', rec.slice(0, 8)); }
+function open(id) {
+  const b = byId(id); if (!b) return;
+  closePop(); q.blur();
+  location.hash = 'b-' + id;
+}
+
+/* ---------- views ---------- */
+function rowFor(b, extra) {
+  return `<a class="row" href="#b-${esc(b.id)}"><span class="ava">${esc(b.ab)}</span><span class="grow"><span class="rt">${esc(b.make)} ${esc(b.r)}</span><br><span class="rs">${esc(extra ?? (b.t + (b.v.length ? ' · GC ' + b.v[0][1] + (b.v.length > 1 ? ' +' + (b.v.length - 1) : '') : '')))}</span></span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></a>`;
+}
+
+function home(makeId) {
+  const recent = store.get('mf_recent', []).map(byId).filter(Boolean);
+  const all = allBoilers();
+  let h = '';
+  if (makeId) {
+    const list = makeId === 'other' ? all.filter(b => b.custom) : all.filter(b => b.b === makeId);
+    const name = makeId === 'other' ? 'Your added boilers' : BR[makeId].name;
+    h += `<div class="sec"><div class="sech"><h2>${esc(name)}</h2><a href="#home" class="note">All makes</a></div><div class="card">${list.map(b => rowFor(b)).join('') || '<div class="empty">Nothing here yet.</div>'}</div>`;
+    if (BR[makeId]) h += `<p class="note">Model not listed? <a href="${esc(google('site:' + BR[makeId].domain + ' installation manual pdf'))}" target="_blank" rel="noopener">Search ${esc(name)}’s website for manuals</a>.</p>`;
+    h += `</div>`;
+    view.innerHTML = h; return;
+  }
+  h += `<div class="sec"><div class="sech"><h2>Recent</h2></div><div class="card">${recent.length ? recent.map(b => rowFor(b)).join('') : '<div class="empty">Boilers you open will show here.</div>'}</div></div>`;
+  const counts = id => all.filter(b => b.b === id).length;
+  h += `<div class="sec"><div class="sech"><h2>Browse by make</h2></div><div class="grid">${DATA.brands.map(b => `<button class="tile" data-make="${b.id}">${esc(b.name)}<small>${counts(b.id)} ranges</small></button>`).join('')}${Object.keys(custom).length ? `<button class="tile" data-make="other">Yours<small>${Object.keys(custom).length} added</small></button>` : ''}</div></div>`;
+  const nGc = DATA.boilers.reduce((n, b) => n + b.v.length, 0);
+  h += `<p class="note">${DATA.boilers.length} boiler ranges and ${nGc} GC numbers, each GC number taken from a manufacturer’s manual or website (the source link is on every boiler page). Always check the data badge on the boiler itself.</p>`;
+  view.innerHTML = h;
+}
+
+function boilerPage(id) {
+  const b = byId(id);
+  if (!b) { view.innerHTML = '<div class="empty">That boiler isn’t in the list. <a href="#home">Back to search</a></div>'; return; }
+  const brand = BR[b.b], m = mine[id] || {};
+  const nDocs = b.d.length + (m.manuals || []).length;
+  let h = `<div class="hero"><a class="back" href="#home"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>Search</a>
+  <div class="status">${esc(b.make)}${b.custom ? ' · added by you' : ''}</div><h1>${esc(b.r)}</h1>
+  <div class="facts"><div class="fact"><span>GC numbers</span><b>${b.v.filter(v => v[1]).length || '—'}</b></div><div class="fact"><span>Type</span><b>${esc(b.t || '—')}</b></div><div class="fact"><span>Manuals</span><b>${nDocs || '—'}</b></div></div></div>`;
+
+  // manuals
+  h += `<div class="sec" style="margin-top:20px"><div class="sech"><h2>Manuals</h2></div><div class="card">`;
+  const saved = m.manuals || [];
+  saved.forEach((x, i) => {
+    h += `<div class="doc ${i === 0 ? 'main' : ''}"><span class="pdf">PDF</span><button class="grow" data-openman="${i}" style="all:unset;cursor:pointer;flex:1"><b>${esc(x.name || 'Saved manual')}</b><br><span style="font-size:13px">On this phone · ${esc(fmtSize(x.size))} · tap to open</span></button><button class="btn sm" data-shareman="${i}" aria-label="Share or open in another app">Share</button><button class="btn sm warn" data-delman="${i}">${m._confirm === i ? 'Tap again' : 'Remove'}</button></div>`;
+  });
+  for (const [label, url] of b.d) {
+    if (!safeUrl(url)) continue;
+    h += `<a class="doc ${!saved.length && label === b.d[0][0] ? 'main' : ''}" href="${esc(url)}" target="_blank" rel="noopener"><span class="pdf">${/\.pdf|download/i.test(url) ? 'PDF' : 'WEB'}</span><span class="grow"><b>${esc(label)}</b><br><span style="font-size:13px">Manufacturer’s site · download it, then add it below</span></span></a>`;
+  }
+  if (!saved.length && !b.d.length) h += `<div class="empty">No direct manual link yet. Use the searches below, download the PDF, then add it here.</div>`;
+  h += `<div class="btns">${canSave() ? `<button class="btn pri" id="addman">Add manual from phone</button>` : `<span class="note">${esc(saveNote())}</span>`}</div><div id="upmsg"></div></div></div>`;
+
+  // page shortcuts
+  h += `<div class="sec"><div class="sech"><h2>Page shortcuts</h2></div><div class="card"><div class="pages">${(m.pages || []).map((p, i) => `<span class="pg">${esc(p.label)} <b>p.${esc(p.page)}</b>${canSave() ? `<button aria-label="Remove ${esc(p.label)}" data-delpg="${i}">✕</button>` : ''}</span>`).join('') || '<span class="note">Note where the useful bits are, like wiring diagrams or fault codes. Phones usually open PDFs at page 1, so this tells you where to scroll.</span>'}</div>
+  ${canSave() ? `<form class="inline" id="pgform"><input id="pglabel" list="pgsugg" placeholder="e.g. Wiring diagrams" aria-label="What's on the page" required style="flex:2 1 160px"><datalist id="pgsugg"><option>Wiring diagrams</option><option>Fault codes</option><option>Gas rates</option><option>Servicing</option><option>Spare parts</option><option>Commissioning</option><option>Flue lengths</option></datalist><input id="pgnum" inputmode="numeric" placeholder="Page" aria-label="Page number" required style="flex:1 1 80px"><button class="btn" type="submit">Add</button></form>` : ''}</div></div>`;
+
+  // notes
+  if (canSave()) h += `<div class="sec"><div class="sech"><h2>Notes</h2><span class="note" id="notestate"></span></div><div class="card"><div class="form"><label for="note" class="note">Your notes for this boiler</label><textarea id="note" rows="3" placeholder="e.g. Pressure sensor changed 2026, customer has a magnetic filter">${esc(m.note || '')}</textarea></div></div></div>`;
+
+  // GC table
+  if (b.v.length) {
+    h += `<div class="sec"><div class="sech"><h2>GC numbers</h2></div><div class="card"><table><thead><tr><th>Model</th><th>GC number</th></tr></thead><tbody>${b.v.map(v => `<tr><td>${esc(v[0] || '—')}</td><td class="gc">${esc(v[1])}</td></tr>`).join('')}</tbody></table>${b.v.some((v, i, a) => a.findIndex(x => x[0] === v[0]) !== i) ? '<div class="src">The manual lists these GC numbers without saying which size is which. Check the data badge.</div>' : ''}${safeUrl(b.s) ? `<div class="src">Source: <a href="${esc(b.s)}" target="_blank" rel="noopener">${esc(b.s.replace(/^https:\/\//, '').slice(0, 70))}${b.s.length > 78 ? '…' : ''}</a></div>` : ''}</div></div>`;
+  }
+
+  // searches
+  const gc1 = b.v.find(v => v[1]);
+  h += `<div class="sec"><div class="sech"><h2>Can’t see the right manual?</h2></div><div class="card">`;
+  if (brand?.page) h += `<a class="doc" href="${esc(brand.page)}" target="_blank" rel="noopener"><span class="pdf">WEB</span><span class="grow"><b>${esc(brand.name)} literature page</b></span></a>`;
+  if (brand) h += `<a class="doc" href="${esc(google('site:' + brand.domain + ' "' + b.r.split(/[(/]/)[0].trim() + '" installation manual'))}" target="_blank" rel="noopener"><span class="pdf">WEB</span><span class="grow"><b>Search ${esc(brand.name)}’s website</b><br><span class="rs">${esc(b.r)}</span></span></a>`;
+  if (gc1) h += `<a class="doc" href="${esc(google('"' + gc1[1] + '" installation manual pdf'))}" target="_blank" rel="noopener"><span class="pdf">GC</span><span class="grow"><b>Search the web for GC ${esc(gc1[1])}</b></span></a>`;
+  h += `<a class="doc" href="${esc(google(b.make + ' ' + b.r + ' installation servicing manual pdf'))}" target="_blank" rel="noopener"><span class="pdf">WEB</span><span class="grow"><b>Search the whole web</b></span></a></div></div>`;
+  if (b.custom && canSave()) h += `<button class="btn warn" id="delboiler">${m._confirmB ? 'Tap again to delete this boiler' : 'Delete this boiler'}</button>`;
+  view.innerHTML = h;
+}
+
+function savedPage() {
+  const ids = Object.keys(mine).filter(id => (mine[id].manuals || []).length || (mine[id].pages || []).length || mine[id].note);
+  const list = ids.map(byId).filter(Boolean);
+  let h = `<div class="sec"><div class="sech"><h2>My manuals</h2></div><div class="card">`;
+  h += list.length ? list.map(b => { const m = mine[b.id]; return rowFor(b, `${(m.manuals || []).length} manual${(m.manuals || []).length === 1 ? '' : 's'} · ${(m.pages || []).length} page shortcut${(m.pages || []).length === 1 ? '' : 's'}`); }).join('')
+    : `<div class="empty">${canSave() ? 'Nothing saved yet. Open a boiler, download its manual from the manufacturer, then tap “Add manual from phone”.' : esc(saveNote())}</div>`;
+  h += `</div></div>`;
+  view.innerHTML = h;
+}
+
+function addPage() {
+  if (!canSave()) { view.innerHTML = `<div class="empty">${esc(saveNote())}</div>`; return; }
+  view.innerHTML = `<div class="sec"><div class="sech"><h2>Add a boiler</h2></div><p class="note">For boilers that aren’t in the list. It’s saved on this phone, appears in search, and you can add manuals and page shortcuts to it.</p><div class="card"><form class="form" id="addform">
+  <label>Make<input id="amake" list="makes" required placeholder="e.g. Intergas"><datalist id="makes">${DATA.brands.map(b => `<option>${esc(b.name)}</option>`).join('')}<option>Alpha</option><option>Vokera</option><option>Intergas</option><option>Potterton</option><option>Main</option><option>Ariston</option></datalist></label>
+  <label>Model<input id="amodel" required placeholder="e.g. Xclusive 30"></label>
+  <label>Type<select id="atype"><option>Combi</option><option>System</option><option>Regular</option><option>Other</option></select></label>
+  <label>GC number (from the data badge)<input id="agc" inputmode="numeric" placeholder="e.g. 47-291-50"></label>
+  <button class="btn pri" type="submit">Save boiler</button><div class="msg" id="addmsg" role="status"></div></form></div></div>`;
+}
+
+function route() {
+  const h = location.hash.slice(1) || 'home';
+  document.querySelectorAll('nav.tabs a').forEach(a => a.toggleAttribute('aria-current', false));
+  const tab = h.startsWith('b-') || h.startsWith('make-') ? 'home' : h;
+  const cur = document.querySelector(`nav.tabs a[data-tab="${tab}"]`); if (cur) cur.setAttribute('aria-current', 'page');
+  if (h.startsWith('b-')) { if (byId(h.slice(2))) remember(h.slice(2)); boilerPage(h.slice(2)); }
+  else if (h.startsWith('make-')) home(h.slice(5));
+  else if (h === 'saved') savedPage();
+  else if (h === 'add') addPage();
+  else home();
+  window.scrollTo(0, 0);
+}
+function rerender() { const a = document.activeElement; if (a && a.id === 'note') return; const y = window.scrollY; route(); window.scrollTo(0, y); }
+
+/* ---------- saving (on this phone, IndexedDB) ---------- */
+let connecting = true;
+function canSave() { return !!idb; }
+function saveNote() { return connecting ? 'Opening your saved manuals…' : 'This browser won’t let the app save (private browsing?). Search still works.'; }
+function fmtSize(n) { return !n ? 'PDF' : n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB'; }
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('manual-finder', 1);
+    r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('items')) d.createObjectStore('items'); if (!d.objectStoreNames.contains('files')) d.createObjectStore('files'); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+function tx(store, mode, fn) {
+  return new Promise((res, rej) => {
+    const t = idb.transaction(store, mode), s = t.objectStore(store), out = fn(s);
+    t.oncomplete = () => res(out && out.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
+const putItem = (id, v) => tx('items', 'readwrite', s => s.put(v, id));
+const delItem = id => tx('items', 'readwrite', s => s.delete(id));
+const putFile = (id, blob) => tx('files', 'readwrite', s => s.put(blob, id));
+const getFile = id => tx('files', 'readonly', s => s.get(id));
+const delFile = id => tx('files', 'readwrite', s => s.delete(id));
+function updateStatus() {
+  const n = Object.values(mine).reduce((k, v) => k + (v.manuals || []).length, 0);
+  statusEl.textContent = !idb ? 'Search only' : n ? n + ' manual' + (n === 1 ? '' : 's') + ' on this phone' : 'Ready';
+}
+
+async function save(id, patch) {
+  if (!canSave()) return;
+  const prev = writing[id] || Promise.resolve();
+  const run = prev.then(async () => {
+    const cur = { ...(mine[id] || {}) }; delete cur._confirm; delete cur._confirmB;
+    const next = { ...cur, ...patch, updatedAt: new Date().toISOString() };
+    mine[id] = next;
+    if (next.custom) custom[id] = next;
+    await putItem(id, next);
+  });
+  writing[id] = run.catch(() => {});
+  return run;
+}
+
+async function uploadManual(id, file) {
+  const msg = document.getElementById('upmsg');
+  const say = t => { if (msg) msg.innerHTML = `<div class="msg" role="status">${esc(t)}</div>`; };
+  if (!file) return;
+  if (!/pdf$/i.test(file.type) && !/\.pdf$/i.test(file.name)) { say('That isn’t a PDF. Pick the manual you downloaded.'); return; }
+  say('Saving “' + file.name + '”…');
+  try {
+    const fid = 'f-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    await putFile(fid, new Blob([file], { type: 'application/pdf' }));
+    const list = [...((mine[id] || {}).manuals || [])];
+    list.push({ id: fid, name: file.name.replace(/\.pdf$/i, ''), size: file.size, at: new Date().toISOString() });
+    await save(id, { manuals: list });
+    updateStatus(); rerender();
+  } catch (e) { say('Couldn’t save the manual' + (e && e.name === 'QuotaExceededError' ? ': your phone’s storage for the app is full. Remove some old manuals first.' : '. Try again.')); }
+}
+async function manualFile(id, i) {
+  const x = (mine[id]?.manuals || [])[i]; if (!x) return null;
+  const blob = await getFile(x.id); if (!blob) return null;
+  return { x, blob };
+}
+
+/* ---------- events ---------- */
+q.addEventListener('input', () => { sel = -1; renderPop(); });
+q.addEventListener('focus', () => { if (q.value.trim()) renderPop(); });
+q.addEventListener('keydown', e => {
+  const n = Math.min(results.length, 8);
+  if (e.key === 'ArrowDown' && n) { e.preventDefault(); sel = (sel + 1) % n; renderPop(); }
+  else if (e.key === 'ArrowUp' && n) { e.preventDefault(); sel = (sel - 1 + n) % n; renderPop(); }
+  else if (e.key === 'Enter') { e.preventDefault(); const r = results[Math.max(sel, 0)]; if (r) open(r.b.id); }
+  else if (e.key === 'Escape') closePop();
+});
+clearBtn.addEventListener('click', () => { q.value = ''; closePop(); clearBtn.hidden = true; q.focus(); });
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+  filter = c.dataset.f;
+  document.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', String(x === c)));
+  q.placeholder = { all: 'e.g. Greenstar 4000 or 47 800 30', make: 'e.g. Vaillant', model: 'e.g. Logic Max', gc: 'e.g. 47 800 30' }[filter];
+  q.inputMode = filter === 'gc' ? 'numeric' : 'text';
+  q.focus(); if (q.value.trim()) renderPop();
+}));
+pop.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) open(b.dataset.go); });
+document.addEventListener('click', e => { if (!e.target.closest('header')) closePop(); });
+window.addEventListener('hashchange', route);
+
+view.addEventListener('click', async e => {
+  const t = e.target.closest('button'); if (!t) return;
+  const id = (location.hash.match(/^#b-(.+)$/) || [])[1];
+  if (t.dataset.make) { location.hash = 'make-' + t.dataset.make; return; }
+  if (t.id === 'addman') { fileIn.value = ''; fileIn.click(); return; }
+  if (t.dataset.openman !== undefined && id) {
+    const f = await manualFile(id, +t.dataset.openman);
+    if (!f) { const mm = document.getElementById('upmsg'); if (mm) mm.innerHTML = '<div class="msg">That file is missing from this phone. Add it again.</div>'; return; }
+    const url = URL.createObjectURL(f.blob);
+    const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000); return;
+  }
+  if (t.dataset.shareman !== undefined && id) {
+    const f = await manualFile(id, +t.dataset.shareman); if (!f) return;
+    const file = new File([f.blob], (f.x.name || 'manual') + '.pdf', { type: 'application/pdf' });
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: f.x.name }); } catch (err) {}
+    return;
+  }
+  if (t.dataset.delman !== undefined && id) {
+    const i = +t.dataset.delman, m = mine[id];
+    if (m._confirm !== i) { m._confirm = i; rerender(); return; }
+    const gone = m.manuals[i], list = m.manuals.filter((_, j) => j !== i);
+    try { await save(id, { manuals: list }); if (gone?.id) await delFile(gone.id); } catch (err) {}
+    updateStatus(); rerender(); return;
+  }
+  if (t.dataset.delpg !== undefined && id) {
+    const list = (mine[id].pages || []).filter((_, j) => j !== +t.dataset.delpg);
+    try { await save(id, { pages: list }); } catch (err) {} rerender(); return;
+  }
+  if (t.id === 'delboiler' && id) {
+    const m = mine[id] || (mine[id] = {});
+    if (!m._confirmB) { m._confirmB = true; rerender(); return; }
+    try { for (const x of m.manuals || []) if (x.id) await delFile(x.id); await delItem(id); delete mine[id]; delete custom[id]; } catch (err) {}
+    updateStatus();
+    location.hash = 'home';
+  }
+});
+view.addEventListener('submit', async e => {
+  e.preventDefault();
+  const id = (location.hash.match(/^#b-(.+)$/) || [])[1];
+  if (e.target.id === 'pgform' && id) {
+    const label = $('#pglabel').value.trim(), page = digits($('#pgnum').value);
+    if (!label || !page) return;
+    const list = [...((mine[id] || {}).pages || []), { label: label.slice(0, 40), page }];
+    try { await save(id, { pages: list }); } catch (err) {} rerender();
+  }
+  if (e.target.id === 'addform') {
+    const msg = $('#addmsg'), make = $('#amake').value.trim(), model = $('#amodel').value.trim(), gc = $('#agc').value.trim();
+    if (!make || !model) { msg.textContent = 'Enter a make and model.'; return; }
+    const nid = 'c-' + Date.now().toString(36);
+    const c = { custom: true, make: make.slice(0, 40), range: model.slice(0, 60), type: $('#atype').value, gcs: gc ? [{ label: '', gc: gc.slice(0, 20) }] : [] };
+    custom[nid] = c;
+    try { await save(nid, c); open(nid); } catch (err) { msg.textContent = 'Couldn’t save on this phone. Try again.'; }
+  }
+});
+let noteTimer;
+view.addEventListener('input', e => {
+  if (e.target.id !== 'note') return;
+  const id = (location.hash.match(/^#b-(.+)$/) || [])[1]; if (!id) return;
+  const st = $('#notestate'); if (st) st.textContent = 'Typing…';
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(async () => { try { await save(id, { note: e.target.value.slice(0, 2000) }); if (st) st.textContent = 'Saved'; } catch (err) { if (st) st.textContent = 'Not saved'; } }, 900);
+});
+fileIn.addEventListener('change', () => { const id = (location.hash.match(/^#b-(.+)$/) || [])[1]; if (id) uploadManual(id, fileIn.files[0]); });
+
+route();
+
+/* ---------- open on-phone storage ---------- */
+(async () => {
+  try {
+    idb = await openDB();
+    const keys = await tx('items', 'readonly', s => s.getAllKeys());
+    const vals = await tx('items', 'readonly', s => s.getAll());
+    const m = {}, c = {};
+    (keys || []).forEach((k, i) => { m[k] = vals[i]; if (vals[i] && vals[i].custom) c[k] = vals[i]; });
+    mine = m; custom = c;
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  } catch (e) { idb = null; }
+  connecting = false; updateStatus(); rerender();
+})();
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
